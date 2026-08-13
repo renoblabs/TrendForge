@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Formats — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Format Explorer</h1>
+  <p>Reusable mechanics, scores, and production feasibility.</p>
+</section>
+
+<div class="grid">
+  {% for fmt in formats %}
+  <a class="card" href="/formats/{{ fmt.id }}">
+    <div class="card-top">
+      <h2>{{ fmt.name }}</h2>
+      <span class="status status-{{ fmt.status.value }}">{{ fmt.status.value }}</span>
+    </div>
+    <p class="muted">{{ fmt.attention_mechanic or '—' }}</p>
+    <div class="stats">
+      <span>Overall <strong>{{ '%.0f'|format(fmt.overall_score or 0) }}</strong></span>
+      <span>Velocity {{ '%.0f'|format(fmt.trend_velocity_score or 0) }}</span>
+      <span>Novelty {{ '%.0f'|format(fmt.novelty_score or 0) }}</span>
+      <span>Saturation {{ '%.0f'|format(fmt.saturation_score or 0) }}</span>
+      <span>Comfy {{ '%.0f'|format(fmt.comfy_feasibility or 0) }}</span>
+    </div>
+  </a>
+  {% else %}
+  <p>No formats yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

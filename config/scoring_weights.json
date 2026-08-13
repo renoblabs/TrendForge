@@ -1,0 +1,17 @@
+{
+  "weights": {
+    "trend_velocity": 0.25,
+    "novelty": 0.20,
+    "replicability": 0.15,
+    "variation_density": 0.15,
+    "cross_platform": 0.10,
+    "production_cost": 0.05,
+    "hook_strength": 0.05,
+    "ip_safety": 0.05
+  },
+  "saturation_penalty_k": 0.30,
+  "status_thresholds": {
+    "BUILD": 85,
+    "WATCH": 70
+  }
+}

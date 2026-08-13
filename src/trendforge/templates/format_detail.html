@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ fmt.name }} — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="breadcrumb"><a href="/formats">Formats</a> / {{ fmt.format_key }}</p>
+  <h1>{{ fmt.name }}</h1>
+  <div class="stats">
+    <span class="status status-{{ fmt.status.value }}">{{ fmt.status.value }}</span>
+    <span><strong>Overall:</strong> {{ '%.0f'|format(fmt.overall_score or 0) }}</span>
+    <span><strong>Comfy feasibility:</strong> {{ '%.0f'|format(fmt.comfy_feasibility or 0) }}</span>
+  </div>
+  <form method="post" action="/formats/{{ fmt.id }}/status" class="inline status-form">
+    <label>Override status
+      <select name="status">
+        {% for s in ['DISCOVERED','ANALYZING','WATCH','BUILD','TESTING','WINNER','SATURATED','DEAD'] %}
+          <option value="{{ s }}" {% if fmt.status.value == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn tiny" type="submit">Save</button>
+  </form>
+</section>
+
+<div class="detail-grid">
+  <section class="panel">
+    <h2>Format</h2>
+    <p>{{ fmt.description }}</p>
+    <p><strong>Category:</strong> {{ fmt.format_category or '—' }}</p>
+    <p><strong>Attention mechanic:</strong> {{ fmt.attention_mechanic or '—' }}</p>
+    <p><strong>Hook pattern:</strong> {{ fmt.hook_pattern or '—' }}</p>
+  </section>
+
+  <section class="panel">
+    <h2>Score breakdown</h2>
+    {% set b = fmt.score_breakdown or {} %}
+    <ul class="breakdown">
+      <li><span>Overall</span><strong>{{ '%.0f'|format(fmt.overall_score or 0) }}</strong></li>
+      <li><span>Trend velocity</span><strong>{{ '%.0f'|format(b.get('trend_velocity', fmt.trend_velocity_score or 0)) }}</strong></li>
+      <li><span>Novelty</span><strong>{{ '%.0f'|format(b.get('novelty', fmt.novelty_score or 0)) }}</strong></li>
+      <li><span>Replicability</span><strong>{{ '%.0f'|format(b.get('replicability', fmt.replicability_score or 0)) }}</strong></li>
+      <li><span>Variation density</span><strong>{{ '%.0f'|format(b.get('variation_density', fmt.variation_density or 0)) }}</strong></li>
+      <li><span>Cross-platform</span><strong>{{ '%.0f'|format(b.get('cross_platform', fmt.cross_platform_score or 0)) }}</strong></li>
+      <li><span>Production cost score</span><strong>{{ '%.0f'|format(b.get('production_cost', b.get('production_cost_score', 0))) }}</strong></li>
+      <li><span>Hook strength</span><strong>{{ '%.0f'|format(b.get('hook_strength', fmt.hook_strength or 0)) }}</strong></li>
+      <li><span>IP safety</span><strong>{{ '%.0f'|format(b.get('ip_safety', 0)) }}</strong></li>
+      <li><span>Saturation (penalty input)</span><strong>{{ '%.0f'|format(b.get('saturation', fmt.saturation_score or 0)) }}</strong></li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Source examples</h2>
+    <ul>
+      {% for c in fmt.candidates %}
+      <li>
+        <span class="pill">{{ c.platform }}</span>
+        {{ c.title or c.url }}
+        — {{ c.views if c.views is not none else '?' }} views
+        (<a href="{{ c.url }}" target="_blank" rel="noopener">open</a>
+      </li>
+      {% else %}
+      <li>No linked candidates.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Why it works</h2>
+    <p>{{ fmt.why_it_works or '—' }}</p>
+  </section>
+
+  <section class="panel">
+    <h2>Variables</h2>
+    <ul>
+      {% for v in fmt.variables or [] %}
+      <li>{{ v }}</li>
+      {% else %}
+      <li>—</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Variation ideas</h2>
+    <ul>
+      {% for v in fmt.variations %}
+      <li>
+        <strong>{{ v.concept }}</strong>
+        {% if v.character %}<div class="muted">Character: {{ v.character }}</div>{% endif %}
+        {% if v.hook %}<div class="muted">Hook: {{ v.hook }}</div>{% endif %}
+      </li>
+      {% else %}
+      <li>No variations yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Production approach</h2>
+    <p><strong>Method:</strong> {{ fmt.recommended_production_method or '—' }}</p>
+    <p>{{ fmt.production_notes or '—' }}</p>
+    <p><strong>Est. cost:</strong> {{ fmt.estimated_generation_cost if fmt.estimated_generation_cost is not none else '—' }} USD</p>
+    <p><strong>Complexity:</strong> {{ '%.0f'|format(fmt.production_complexity or 0) }}</p>
+    <p class="muted">Catalog methods available for later ComfyUI mapping: {% for m in production_methods %}{{ m.method.value }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  </section>
+
+  <section class="panel">
+    <h2>IP / originality</h2>
+    <p>{{ fmt.ip_notes or '—' }}</p>
+    <p><strong>IP risk signal:</strong> {{ '%.0f'|format(fmt.ip_risk or 0) }}</p>
+  </section>
+
+  <section class="panel muted-panel">
+    <h2>Distribution potential (stub)</h2>
+    <p>Postiz distribution jobs and performance records are modeled but not live in Phase 1.</p>
+    <p>Future loop: FORMAT → VARIATIONS → ASSETS → DISTRIBUTION → PERFORMANCE → LEARN.</p>
+  </section>
+</div>
+{% endblock %}

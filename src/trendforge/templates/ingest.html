@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Ingest — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Manual Ingest</h1>
+  <p>Paste URLs (one per line) or a JSON array of candidates. Analyze extracts formats and scores them.</p>
+</section>
+
+{% if message %}
+  <div class="alert ok">{{ message }}</div>
+{% endif %}
+{% if error %}
+  <div class="alert err">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/ingest" class="panel form">
+  <label>Candidates
+    <textarea name="text" rows="12" placeholder="https://www.tiktok.com/@...
+https://www.youtube.com/shorts/...
+# or JSON:
+# [{&quot;url&quot;:&quot;...&quot;,&quot;title&quot;:&quot;...&quot;,&quot;views&quot;:123}]"></textarea>
+  </label>
+  <label class="check">
+    <input type="checkbox" name="fetch_oembed" value="true" />
+    Try official oEmbed enrichment (YouTube/TikTok; best-effort)
+  </label>
+  <button class="btn" type="submit">Ingest</button>
+</form>
+
+<form method="post" action="/analyze" class="panel form">
+  <h2>Analyze pending</h2>
+  <p class="muted">Without OPENROUTER_API_KEY, use stub analysis. With a key, leave stub unchecked for live LLM calls.</p>
+  <label class="check">
+    <input type="checkbox" name="force_stub" value="true" checked />
+    Force stub analyzer (no network)
+  </label>
+  <label class="check">
+    <input type="checkbox" name="require_live" value="true" />
+    Require live OpenRouter (fail if no key)
+  </label>
+  <button class="btn secondary" type="submit">Run analysis</button>
+</form>
+{% endblock %}

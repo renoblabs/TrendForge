@@ -1,0 +1,37 @@
+{
+  "what_happens": "An unexpected character performs a familiar structure.",
+  "first_second_hook": "Incongruous character appears immediately.",
+  "why_stop_scrolling": "Role surprise.",
+  "attention_mechanic": "Unexpected character + preserved performance",
+  "format_name": "Unexpected Character + Performance",
+  "format_key": "unexpected-character-performance",
+  "format_category": "performance-transfer",
+  "format_description": "Replace expected performer with incongruous character.",
+  "hook_pattern": "Character surprise in 1s",
+  "why_it_works": "Familiar scaffold + novelty casting.",
+  "variables": ["character", "script", "setting"],
+  "estimated_variation_count": 40,
+  "novelty_signal": 88,
+  "replicability_signal": 95,
+  "saturation_signal": 38,
+  "trend_velocity_signal": 94,
+  "cross_platform_signal": 71,
+  "hook_strength_signal": 91,
+  "production_complexity_signal": 35,
+  "comfy_feasibility_signal": 92,
+  "ip_risk_signal": 42,
+  "ip_notes": "Invent original performances.",
+  "recommended_production_method": "performance_transfer",
+  "production_notes": "Original script only.",
+  "estimated_generation_cost_usd": 3.5,
+  "original_variations": [
+    {
+      "concept": "Knight delivers original product pitch",
+      "character": "knight",
+      "scenario": "castle",
+      "hook": "Visor lifts",
+      "production_method": "character_replacement",
+      "notes": "Original script"
+    }
+  ]
+}

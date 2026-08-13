@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Candidates — TrendForge{% endblock %}
+{% block content %}
+<section class="hero row">
+  <div>
+    <h1>Candidate Feed</h1>
+    <p>Discovered videos and their linked formats.</p>
+  </div>
+  <form method="post" action="/analyze" class="inline">
+    <input type="hidden" name="force_stub" value="true" />
+    <button type="submit" class="btn secondary">Analyze pending (stub)</button>
+  </form>
+</section>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Title / URL</th>
+      <th>Creator</th>
+      <th>Views</th>
+      <th>Engagement %</th>
+      <th>Discovered</th>
+      <th>Format</th>
+      <th>Score</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in candidates %}
+    <tr>
+      <td><span class="pill">{{ c.platform }}</span></td>
+      <td>
+        <div class="title">{{ c.title or '(no title)' }}</div>
+        <a class="url" href="{{ c.url }}" target="_blank" rel="noopener">{{ c.url }}</a>
+      </td>
+      <td>{{ c.creator or '—' }}</td>
+      <td>{{ c.views if c.views is not none else '—' }}</td>
+      <td>{{ c.engagement if c.engagement is not none else '—' }}</td>
+      <td>{{ c.discovered_at.strftime('%Y-%m-%d') if c.discovered_at else '—' }}</td>
+      <td>
+        {% if c.format %}
+          <a href="/formats/{{ c.format.id }}">{{ c.format.name }}</a>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>{{ '%.0f'|format(c.format.overall_score) if c.format and c.format.overall_score is not none else '—' }}</td>
+      <td>{{ c.analysis_status.value }}</td>
+      <td>
+        {% if c.analysis_status.value != 'ANALYZED' %}
+        <form method="post" action="/candidates/{{ c.id }}/analyze">
+          <input type="hidden" name="force_stub" value="true" />
+          <button class="btn tiny" type="submit">Analyze</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="10">No candidates yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

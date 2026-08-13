@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Opportunity Queue — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Top Opportunities</h1>
+  <p>Ranked reusable formats. Highest-value opportunities first.</p>
+</section>
+
+{% if not formats %}
+  <div class="empty">
+    <p>No formats yet. Run <code>python -m scripts.seed --reset</code> or ingest candidates.</p>
+    <p><a class="btn" href="/ingest">Go to Ingest</a></p>
+  </div>
+{% else %}
+  <ol class="opp-list">
+    {% for fmt in formats %}
+      <li class="opp-card {% if loop.index <= 3 %}top{% endif %}">
+        <div class="rank">{{ loop.index }}</div>
+        <div class="body">
+          <h2><a href="/formats/{{ fmt.id }}">{{ fmt.name }}</a></h2>
+          <p class="muted">{{ fmt.attention_mechanic or fmt.description }}</p>
+          <div class="stats">
+            <span><strong>Score:</strong> {{ '%.0f'|format(fmt.overall_score or 0) }}</span>
+            <span><strong>Velocity:</strong> {{ '%.0f'|format(fmt.trend_velocity_score or 0) }}</span>
+            <span><strong>Variation density:</strong> {{ '%.0f'|format(fmt.variation_density or 0) }}</span>
+            <span><strong>Comfy:</strong> {{ '%.0f'|format(fmt.comfy_feasibility or 0) }}</span>
+            <span class="status status-{{ fmt.status.value }}">{{ fmt.status.value }}</span>
+          </div>
+        </div>
+      </li>
+    {% endfor %}
+  </ol>
+{% endif %}
+{% endblock %}

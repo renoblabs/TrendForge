@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}TrendForge{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><a href="/">TrendForge</a> <span class="tag">Phase 1</span></div>
+    <nav>
+      <a href="/" class="{% if page == 'queue' %}active{% endif %}">Opportunity Queue</a>
+      <a href="/candidates" class="{% if page == 'candidates' %}active{% endif %}">Candidates</a>
+      <a href="/formats" class="{% if page == 'formats' %}active{% endif %}">Formats</a>
+      <a href="/ingest" class="{% if page == 'ingest' %}active{% endif %}">Ingest</a>
+    </nav>
+    <div class="meta">
+      {% if has_openrouter %}
+        <span class="pill ok">OpenRouter ready</span>
+      {% else %}
+        <span class="pill warn">No LLM key — seed/stub mode</span>
+      {% endif %}
+    </div>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
