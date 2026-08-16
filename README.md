@@ -2,26 +2,29 @@
 
 Closed-loop **short-form content intelligence** MVP.
 
-We are **not** building an AI video generator first. Phase 1 proves:
+Phase 1: turn short-form signals into ranked reusable formats.
+YouTube Discovery v1: find Shorts from **objective performance data**, not only human-picked URLs.
 
-> Can we systematically turn short-form video signals into a ranked list of promising reusable formats?
-
-## What Phase 1 includes
+## What it includes
 
 - Manual candidate ingestion (URLs / JSON)
-- Structured LLM analysis via OpenRouter (optional key) or stub analyzer
-- Deterministic, configurable scoring with transparent breakdowns
-- Format family matching via stable `format_key`
-- Local dashboard: Opportunity Queue, Candidates, Format Explorer, Format Detail, Ingest
-- Schema stubs for variations, assets, Postiz distribution, performance
-- Seed demo data (3 format families)
+- YouTube Shorts discovery via the official Data API (optional `YOUTUBE_API_KEY`)
+- Repeated observations, velocity, acceleration, creator-relative lift
+- Structured LLM analysis via OpenRouter (optional) or stub analyzer
+- Format-family ideation (original concept mutations; not performance evidence)
+- Production specifications from selected ideas
+- **Generation Control Plane** — dashboard Generate launches Cursor Agent CLI → native Comfy Cloud MCP (9:16 still for this slice)
+- Deterministic format scoring **and** a separate discovery score
+- Dashboards: Opportunity Queue, **Discovery**, Format Opportunities, **Generation**, Candidates, Formats, Ingest
+- Schema stubs for variations, assets, Postiz, performance
 
 ## Stack
 
 - Python 3.11+
 - FastAPI + Jinja2
 - SQLite + SQLAlchemy 2
-- OpenRouter (OpenAI-compatible) when `OPENROUTER_API_KEY` is set
+- OpenRouter when `OPENROUTER_API_KEY` is set
+- YouTube Data API v3 when `YOUTUBE_API_KEY` is set
 
 ## Quick start
 
@@ -35,13 +38,40 @@ python -m uvicorn trendforge.app:app --app-dir src --host 127.0.0.1 --port 8000
 
 Open http://127.0.0.1:8000
 
-### Optional live analysis
+### YouTube discovery
 
-1. Put an OpenRouter key in `.env` as `OPENROUTER_API_KEY`
-2. Ingest real URLs on `/ingest`
-3. Uncheck “Force stub analyzer” and run analysis
+1. Enable YouTube Data API v3 and set `YOUTUBE_API_KEY` in `.env`
+2. Edit queries/windows in `config/discovery.json` if needed
+3. Run:
 
-**Note:** Cursor / Claude OAuth cannot power in-app analysis. Use OpenRouter (or later another API provider).
+```bash
+python scripts/discover_youtube.py
+python scripts/discover_youtube.py --broad --limit 10 --no-promote
+python scripts/discover_youtube.py --broad --profile north_america_english --limit 10 --no-promote
+python scripts/observe_youtube.py
+python scripts/run_gathering.py --loop
+python scripts/analyze_high_signal.py
+```
+
+4. Open http://127.0.0.1:8733/discovery (use a non-8000 port if 8000 is taken) and `/discovery/opportunities`
+
+Details: [docs/YOUTUBE_DISCOVERY.md](docs/YOUTUBE_DISCOVERY.md)
+
+### Generation (Comfy Cloud)
+
+1. Authenticate native Cursor `comfy-cloud` MCP (`https://cloud.comfy.org/mcp`). Local ComfyUI is not used. Install Cursor Agent CLI (`agent`) so Generate can launch it.
+2. Create ideas on Format Opportunities
+3. Open `/generation`, click **Generate** (creates a job and starts Cursor Agent CLI)
+4. The agent executes the job via Comfy Cloud MCP; TrendForge applies `result.json` when the process exits
+
+Details: [docs/GENERATION.md](docs/GENERATION.md)
+
+### Optional live format analysis
+
+1. Set `OPENROUTER_API_KEY`
+2. Promote/analyze from Discovery or Ingest (uncheck stub)
+
+**Note:** Cursor / Claude OAuth cannot power in-app analysis.
 
 ## Tests
 
@@ -49,21 +79,13 @@ Open http://127.0.0.1:8000
 python -m pytest
 ```
 
-## Project layout
+## What this does NOT prove yet
 
-```text
-src/trendforge/     app, models, scoring, analysis, sources, distribution, templates
-config/             scoring_weights.json
-scripts/seed.py     demo data
-docs/               DATA_SOURCES.md, NEXT_STEPS.md
-tests/
-```
-
-## Core concepts
-
-- **Content instance ≠ format.** Multiple candidates can share one format.
-- LLM extracts formats and score *signals*; it does **not** set commercial `overall_score` / BUILD status.
-- Scoring weights live in `config/scoring_weights.json` and are adjustable.
+- Discovery weights are a **calibration starting point**, not a predictive model.
+- A high discovery score is not proof a format will work when we produce it.
+- YouTube-only: this is not cross-platform trend detection.
+- Creator baseline is estimated from videos TrendForge has already seen, not from YouTube’s full channel history.
+- Search quota is coarse; we will miss Shorts that never match the sampling queries.
 
 ## License
 

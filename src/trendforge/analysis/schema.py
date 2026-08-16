@@ -46,6 +46,29 @@ class FormatAnalysis(BaseModel):
     estimated_generation_cost_usd: Optional[float] = None
     original_variations: list[VariationIdea] = Field(default_factory=list)
 
+    surface_content: str = ""
+    primary_mechanic: str = ""
+    secondary_mechanics: list[str] = Field(default_factory=list)
+    format_family: str = ""
+    premise: str = ""
+    character_device: str = ""
+    visual_pattern: str = ""
+    story_structure: str = ""
+    pacing: str = ""
+    emotional_trigger: str = ""
+    novelty_mechanism: str = ""
+    ai_leverage: int = Field(default=3, ge=1, le=5)
+    variation_density_rating: int = Field(default=3, ge=1, le=5)
+    production_complexity_rating: int = Field(default=3, ge=1, le=5)
+    ip_dependency: str = "LOW"
+    originality_risk: str = ""
+    audience_signal: str = ""
+    reason_it_might_work: str = ""
+    format_hypothesis: str = ""
+    variation_examples: list[str] = Field(default_factory=list)
+    analysis_confidence: str = "medium"
+    proposed_mechanic_label: Optional[str] = None
+
     def to_score_signals(self) -> dict[str, Any]:
         return {
             "trend_velocity": self.trend_velocity_signal,

@@ -1,0 +1,112 @@
+{
+  "max_generation_retries": 2,
+  "default_duration_seconds": 5,
+  "default_variant_count": 1,
+  "allowed_durations": [5, 8, 15, 20, 30],
+  "allowed_variant_counts": [1, 3, 5],
+  "execution_target": "comfy_cloud",
+  "agent_runner": "cursor-agent",
+  "agent_prompt_version": "production-agent-v3",
+  "output_dir": "data/generated",
+  "default_cloud_model": "seedance-2.0",
+  "cloud_models": [
+    {
+      "id": "seedance-2.0",
+      "label": "Seedance 2.0 — text to video (up to 1080p, 4–15s)",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "byteplus/seedance-2.0-t2v",
+      "params": {"model": "Seedance 2.0"},
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    },
+    {
+      "id": "seedance-2.0-fast",
+      "label": "Seedance 2.0 Fast — text to video (720p, cheaper)",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "byteplus/seedance-2.0-t2v",
+      "params": {"model": "Seedance 2.0 Fast"},
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    },
+    {
+      "id": "seedance-2.0-mini",
+      "label": "Seedance 2.0 Mini — draft text to video (480p/720p)",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "byteplus/seedance-2.0-t2v",
+      "params": {"model": "Seedance 2.0 Mini"},
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    },
+    {
+      "id": "seedance-2.5",
+      "label": "Seedance 2.5 — text to video (up to 30s, 720p)",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "byteplus/seedance-2.0-t2v",
+      "params": {"model": "Seedance 2.5"},
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 30
+    },
+    {
+      "id": "minimax-h3",
+      "label": "MiniMax Hailuo 03 / H3 — text to video + native audio",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "minimax/hailuo-03-t2v",
+      "template": "api_minimax_h3_t2v",
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    },
+    {
+      "id": "kling-v3",
+      "label": "Kling V3 — text to video",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "kling/kling-v3-t2v",
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    },
+    {
+      "id": "kling-3.0-turbo",
+      "label": "Kling 3.0 Turbo — text to video",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "kling/kling-3.0-turbo-t2v",
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    },
+    {
+      "id": "flux-3-video",
+      "label": "FLUX 3 Video — text to video + audio",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "bfl/flux-3-video",
+      "template": "api_bfl_flux3_t2v",
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 20
+    },
+    {
+      "id": "veo-3.1",
+      "label": "Google Veo 3.1 — text to video (4 / 6 / 8s)",
+      "kind": "video",
+      "path": "partner_generate",
+      "partner_model": "veo/veo-3-t2v",
+      "params": {"model": "veo-3.1-generate"},
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 8
+    },
+    {
+      "id": "ltx-2.5",
+      "label": "LTX-2.5 — text to video (Cloud template)",
+      "kind": "video",
+      "path": "run_template",
+      "partner_model": null,
+      "template": "api_ltx2_5_t2v",
+      "aspect_ratio": "9:16",
+      "max_duration_seconds": 15
+    }
+  ]
+}

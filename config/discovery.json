@@ -1,0 +1,64 @@
+{
+  "queries": [
+    "AI",
+    "comedy",
+    "funny",
+    "POV",
+    "story",
+    "animals",
+    "transformation",
+    "character"
+  ],
+  "published_window": "last_48_hours",
+  "windows": {
+    "last_24_hours": 24,
+    "last_48_hours": 48,
+    "last_7_days": 168
+  },
+  "max_results_per_query": 25,
+  "max_pages_per_query": 1,
+  "max_short_seconds": 60,
+  "promote_top_n": 25,
+  "promote_min_score": null,
+  "observe_top_n": 80,
+  "schedule": {
+    "enabled": true,
+    "discover_every_minutes": 360,
+    "observe_every_minutes": 90,
+    "mode": "topics",
+    "promote": true,
+    "live_analysis": false,
+    "limit": null,
+    "check_every_seconds": 60
+  },
+  "min_creator_videos": 3,
+  "region_code": null,
+  "default_profile": "north_america_english",
+  "profiles": {
+    "north_america_english": {
+      "language": "en",
+      "regions": ["US", "CA"]
+    },
+    "global": {
+      "language": null,
+      "regions": []
+    }
+  },
+  "broad": {
+    "search_terms": [""],
+    "order": "viewCount",
+    "published_window": "last_24_hours",
+    "max_results": 25,
+    "max_pages": 1,
+    "profile": "north_america_english",
+    "unconstrained_query": "#shorts"
+  },
+  "analysis": {
+    "high_signal_only": true,
+    "promote_accelerating": true,
+    "promote_emerging": true,
+    "emerging_min_discovery_score": 20,
+    "max_analyze_per_run": 10,
+    "prompt_version": "format-intelligence-v1.1"
+  }
+}

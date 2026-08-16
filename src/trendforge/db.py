@@ -36,9 +36,70 @@ def get_engine(db_path: Path | None = None):
 def init_db(db_path: Path | None = None) -> None:
     engine = get_engine(db_path)
     Base.metadata.create_all(bind=engine)
+    _ensure_candidate_columns(engine)
+    _ensure_asset_columns(engine)
     if db_path is None:
         global _SessionLocal
         _SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+def _ensure_candidate_columns(engine) -> None:
+    """Add discovery columns to existing SQLite DBs created in Phase 1."""
+    new_columns = {
+        "external_id": "VARCHAR(128)",
+        "channel_id": "VARCHAR(128)",
+        "channel_name": "VARCHAR(255)",
+        "hashtags": "JSON",
+        "category": "VARCHAR(64)",
+        "source_query": "VARCHAR(255)",
+        "source_queries": "JSON",
+        "is_short": "BOOLEAN",
+        "favorite_count": "INTEGER",
+        "channel_subscriber_count": "INTEGER",
+        "age_hours": "FLOAT",
+        "views_per_hour": "FLOAT",
+        "acceleration": "FLOAT",
+        "like_rate": "FLOAT",
+        "comment_rate": "FLOAT",
+        "creator_baseline": "FLOAT",
+        "creator_baseline_estimated": "BOOLEAN",
+        "creator_lift": "FLOAT",
+        "discovery_score": "FLOAT",
+        "discovery_breakdown": "JSON",
+        "discovery_labels": "JSON",
+        "promoted_at": "DATETIME",
+        "analysis_history": "JSON",
+        "data_origin": "VARCHAR(16)",
+    }
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(content_candidates)").fetchall()
+        if not rows:
+            return
+        existing = {row[1] for row in rows}
+        for name, ddl in new_columns.items():
+            if name not in existing:
+                conn.exec_driver_sql(
+                    f"ALTER TABLE content_candidates ADD COLUMN {name} {ddl}"
+                )
+
+
+def _ensure_asset_columns(engine) -> None:
+    new_columns = {
+        "generation_job_id": "INTEGER",
+        "mime_type": "VARCHAR(128)",
+        "source": "VARCHAR(32)",
+        "format_family": "VARCHAR(128)",
+        "width": "INTEGER",
+        "height": "INTEGER",
+    }
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(content_assets)").fetchall()
+        if not rows:
+            return
+        existing = {row[1] for row in rows}
+        for name, ddl in new_columns.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE content_assets ADD COLUMN {name} {ddl}")
 
 
 def get_session_factory(db_path: Path | None = None):

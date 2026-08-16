@@ -4,6 +4,7 @@ from trendforge.analysis.client import (
     StubAnalyzer,
     get_analyzer,
 )
+from trendforge.analysis.parse import parse_format_analysis
 from trendforge.analysis.schema import FormatAnalysis, VariationIdea
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "OpenRouterAnalyzer",
     "StubAnalyzer",
     "get_analyzer",
+    "parse_format_analysis",
 ]

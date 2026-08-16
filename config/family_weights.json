@@ -1,0 +1,31 @@
+{
+  "weights": {
+    "recurrence": 0.18,
+    "unique_channels": 0.18,
+    "performance": 0.22,
+    "momentum": 0.22,
+    "production": 0.20
+  },
+  "normalization": {
+    "candidates_at_100": 12,
+    "channels_at_100": 8,
+    "views_per_hour_at_100": 8000,
+    "acceleration_at_100": 2.0,
+    "accelerating_count_at_100": 4
+  },
+  "status": {
+    "build_min_score": 65,
+    "build_min_channels": 3,
+    "build_min_candidates": 3,
+    "build_min_accelerating": 1,
+    "watch_min_score": 35,
+    "watch_min_candidates": 2,
+    "watch_min_channels": 2
+  },
+  "evidence": {
+    "high_min_channels": 5,
+    "high_min_candidates": 8,
+    "medium_min_channels": 2,
+    "medium_min_candidates": 3
+  }
+}

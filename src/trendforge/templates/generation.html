@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Generation — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Generation</h1>
+  <p class="muted">Click Generate to create a job and automatically launch a Cursor Agent CLI worker. The agent uses native Comfy Cloud MCP to make a 9:16 video. FastAPI does not call Comfy. Does not publish.</p>
+  {% if error %}<p class="alert err">{{ error }}</p>{% endif %}
+  {% if message == 'ideas' %}<p class="alert ok">New ideas are in Review. Approve the ones you want in the Generate dropdown.</p>{% endif %}
+  {% if message == 'reviewed' %}<p class="alert ok">Idea pool updated.</p>{% endif %}
+  {% if cli_auth and not cli_auth.authenticated %}
+  <p class="alert err">{{ cli_auth.message }}</p>
+  <p>The dashboard cannot log into Cursor for you. In PowerShell run:</p>
+  <pre class="muted">agent login</pre>
+  <p class="muted">Complete the browser login, then refresh this page. Generate stays disabled until the CLI is authenticated. Do not put a Cursor API key in TrendForge <code>.env</code>.</p>
+  {% elif cli_auth and cli_auth.authenticated %}
+  <p class="muted">Cursor Agent CLI: authenticated. Ready to generate.</p>
+  {% endif %}
+</section>
+
+<section class="panel" id="review">
+  <h2>1. Brainstorm ideas</h2>
+  <p class="muted">Generate concept mutations, then approve the ones worth producing. Only approved ideas appear in the Generate dropdown. Ideas are not performance evidence.</p>
+  {% if ideation_families %}
+  <form class="form" method="post" action="/generation/ideas/brainstorm">
+    <label>Format family
+      <select name="family_key" required>
+        {% for family in ideation_families %}
+        <option value="{{ family.id }}">{{ family.label }} ({{ family.id }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Count
+      <select name="count">
+        {% for n in ideation_counts %}
+        <option value="{{ n }}" {% if n == ideation_default_count %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Emphasis
+      <select name="emphasis">
+        {% for preset in ideation_presets %}
+        <option value="{{ preset }}">{% if preset %}{{ preset }}{% else %}(none){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn" type="submit">Generate ideas</button>
+  </form>
+  {% else %}
+  <p class="muted">No analyzed format families yet. Analyze live Shorts on <a href="/discovery/opportunities">Format Opportunities</a> first.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>2. Review</h2>
+  {% if pending_ideas %}
+  {% for idea in pending_ideas %}
+  <article class="brainstorm-set">
+    <p><span class="pill">pending</span> <code>{{ idea.format_family }}</code>
+      <strong>{{ idea.title }}</strong></p>
+    <p>{{ idea.hook }}</p>
+    {% if idea.premise %}<p class="muted">{{ idea.premise }}</p>{% endif %}
+    <div class="inline">
+      <form method="post" action="/generation/ideas/{{ idea.set_id }}/{{ idea.idea_index }}/approve">
+        <button class="btn tiny" type="submit">Approve</button>
+      </form>
+      <form method="post" action="/generation/ideas/{{ idea.set_id }}/{{ idea.idea_index }}/deny">
+        <button class="btn tiny" type="submit">Deny</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+  {% else %}
+  <p class="muted">No pending ideas. Brainstorm above or approve nothing yet.</p>
+  {% endif %}
+  {% if denied_ideas %}
+  <details>
+    <summary>{{ denied_ideas|length }} denied</summary>
+    {% for idea in denied_ideas %}
+    <p class="muted"><code>{{ idea.format_family }}</code> — {{ idea.title }}
+      <form class="inline" method="post" action="/generation/ideas/{{ idea.set_id }}/{{ idea.idea_index }}/pending">
+        <button class="btn tiny" type="submit">Move back to review</button>
+      </form>
+    </p>
+    {% endfor %}
+  </details>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>3. Generate</h2>
+  <p class="muted">Approved pool: {{ approved_ideas|length }} idea{{ 's' if approved_ideas|length != 1 else '' }}.</p>
+  <p class="muted">Start at 5–8s to compare models cheaply. If a clip works, run the same idea again at 15s+ with any prompt tweaks.</p>
+  {% if options %}
+  <form class="form" method="post" action="/generation">
+    <label>Format / idea
+      <select name="idea_ref" required>
+        {% for family in options %}
+        <optgroup label="{{ family.format_family }}">
+          {% for idea in family.ideas %}
+          <option value="{{ family.format_family }}|{{ idea.set_id }}|{{ idea.idea_index }}">{{ idea.title }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Comfy Cloud video model
+      <select name="cloud_model" required>
+        {% for model in cloud_models %}
+        <option value="{{ model.id }}" {% if model.id == 'seedance-2.0' %}selected{% endif %}>{{ model.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Duration
+      <select name="duration_seconds">
+        {% for n in allowed_durations %}
+        <option value="{{ n }}" {% if n == default_duration %}selected{% endif %}>{{ n }}s{% if n <= 8 %} (test){% elif n >= 15 %} (longer pass){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Variants (stored; this slice executes one)
+      <select name="variant_count">
+        <option value="1" selected>1</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+      </select>
+    </label>
+    <label>Visual style
+      <input type="text" name="style" placeholder="photoreal / stylized / phone-camera">
+    </label>
+    <label>Voice style
+      <input type="text" name="voice" placeholder="dry POV, optional">
+    </label>
+    <label>Audio preference
+      <input type="text" name="audio_preferences" placeholder="SFX, no licensed music">
+    </label>
+    <button class="btn" type="submit" {% if cli_auth and not cli_auth.authenticated %}disabled{% endif %}>Generate</button>
+  </form>
+  {% else %}
+  <p class="muted">No approved ideas yet. Brainstorm and approve in the Review section above. You can also generate ideas on <a href="/discovery/opportunities">Format Opportunities</a>.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Jobs</h2>
+  {% for job in jobs %}
+  <article class="brainstorm-set">
+    <p><a href="/generation/jobs/{{ job.id }}"><strong>Generation #{{ job.id }}</strong></a>
+      <span class="pill">{{ job.status }}</span>
+    </p>
+    <p>Format: <code>{{ job.format_family }}</code> · {{ job.requested_duration_seconds }}s</p>
+    {% if job.comfy_workflow_id %}<p>Workflow: {{ job.comfy_workflow_id }} {{ job.comfy_workflow_version }}</p>{% endif %}
+    <p>Cloud model: {{ (job.job_metadata_json or {}).get('cloud_model', {}).get('label') or '—' }}</p>
+    <p>Agent PID: {{ (job.job_metadata_json or {}).get('agent_pid') or '—' }}
+      · started {{ (job.job_metadata_json or {}).get('agent_started') or '—' }}
+      · finished {{ (job.job_metadata_json or {}).get('agent_finished') or '—' }}</p>
+    <p>Cloud job: {{ (job.job_metadata_json or {}).get('cloud_job_id') or job.agent_session_id or '—' }}</p>
+    {% set asset = assets.get(job.id) %}
+    {% if asset %}
+    <p>Output:
+      {% if asset.mime_type and asset.mime_type.startswith('image/') %}
+      <a href="/generation/assets/{{ asset.id }}/file"><img src="/generation/assets/{{ asset.id }}/file" alt="generated" style="max-width:180px;height:auto;border-radius:8px;"></a>
+      {% elif asset.mime_type and asset.mime_type.startswith('video/') %}
+      <video src="/generation/assets/{{ asset.id }}/file" controls style="max-width:180px;border-radius:8px;"></video>
+      {% else %}
+      <a href="/generation/assets/{{ asset.id }}/file">Open asset</a>
+      {% endif %}
+    </p>
+    {% endif %}
+    {% if job.production_spec_id %}
+    <p><a href="/production/specs/{{ job.production_spec_id }}">View production spec</a> · <a href="/generation/jobs/{{ job.id }}">View job</a></p>
+    {% endif %}
+    {% if job.error_message %}<p class="alert err">This job failed: {{ job.error_message }}</p>{% endif %}
+  </article>
+  {% else %}
+  <p class="muted">No generation jobs yet.</p>
+  {% endfor %}
+</section>
+{% endblock %}

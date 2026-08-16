@@ -161,3 +161,50 @@ nav a.active { color: var(--text); font-weight: 600; }
 .alert.err { background: #3a1c21; color: var(--err); }
 .empty { background: var(--panel); border: 1px dashed var(--line); border-radius: 12px; padding: 1.5rem; }
 code { background: #222836; padding: 0.1rem 0.35rem; border-radius: 4px; }
+.label {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid var(--line);
+  margin-right: 0.2rem;
+}
+.label-POPULAR { color: var(--warn); border-color: #6b5318; }
+.label-EMERGING { color: var(--ok); border-color: #245c40; }
+.label-ACCELERATING { color: var(--accent); border-color: #2f4d80; }
+.obs-chart {
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  background: #0f131a;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+.ideation-form { margin: 0.75rem 0 1rem; flex-wrap: wrap; }
+.ideation-form button {
+  background: var(--accent);
+  color: #0b0d12;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  height: 2.6rem;
+}
+.idea-list { padding-left: 1.2rem; }
+.idea-list li { margin-bottom: 1rem; }
+.copy-block {
+  width: 100%;
+  margin-top: 0.35rem;
+  background: #0f131a;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.brainstorm-set { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }

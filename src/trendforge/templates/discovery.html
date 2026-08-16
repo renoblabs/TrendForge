@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Discovery — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>YouTube Discovery</h1>
+  <p>{{ total }} Shorts stored. <strong>POPULAR</strong> is not <strong>EMERGING</strong> is not <strong>ACCELERATING</strong>.</p>
+  {% if error %}<p class="alert err">{{ error }}</p>{% endif %}
+  {% if message %}<p class="alert ok">{{ message }}</p>{% endif %}
+  <p>
+    <a class="btn secondary" href="/discovery/opportunities">Format opportunities</a>
+  </p>
+  <form method="post" action="/discovery/analyze-high-signal" style="margin-top:0.6rem;">
+    <input type="hidden" name="force_stub" value="true" />
+    <button class="btn" type="submit">Analyze high-signal set (stub LLM)</button>
+    <span class="muted"> ACCELERATING, or EMERGING with discovery score ≥ configured threshold. Does not send every Short to the LLM.</span>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Gathering schedule</h2>
+  <p class="muted">YouTube Data API only. Discover every {{ gathering.schedule.discover_every_minutes }} minutes · observe every {{ gathering.schedule.observe_every_minutes }} minutes · mode <code>{{ gathering.schedule.mode }}</code>. Keep <code>python scripts/run_gathering.py --loop</code> running so this actually fires; the dashboard does not run a background scheduler.</p>
+  <p>
+    Discover: {% if gathering.discover.last_started_at %}{{ gathering.discover.last_started_at.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}never{% endif %}
+    · {% if gathering.discover.due %}<strong>due</strong>{% else %}ok{% endif %}
+    · Observe: {% if gathering.observe.last_started_at %}{{ gathering.observe.last_started_at.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}never{% endif %}
+    · {% if gathering.observe.due %}<strong>due</strong>{% else %}ok{% endif %}
+  </p>
+  <div class="inline">
+    <form method="post" action="/discovery/gather">
+      <input type="hidden" name="job" value="discover" />
+      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run discover now</button>
+    </form>
+    <form method="post" action="/discovery/gather">
+      <input type="hidden" name="job" value="observe" />
+      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run observe now</button>
+    </form>
+    <form method="post" action="/discovery/gather">
+      <input type="hidden" name="job" value="both" />
+      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run both now</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Recent runs</h2>
+  {% if runs %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Kind</th><th>Started</th><th>Found</th><th>New</th>
+        <th>Dupes</th><th>Promoted</th><th>Obs</th><th>Errors</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.kind }}</td>
+        <td>{{ run.started_at.strftime('%Y-%m-%d %H:%M') if run.started_at else '—' }}</td>
+        <td>{{ run.candidates_found }}</td>
+        <td>{{ run.new_candidates }}</td>
+        <td>{{ run.duplicates }}</td>
+        <td>{{ run.promoted_candidates }}</td>
+        <td>{{ run.observations_written }}</td>
+        <td>{{ (run.api_errors or [])|length }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No runs yet. Use the buttons above or <code>python scripts/run_gathering.py --loop</code>.</p>
+  {% endif %}
+</section>
+
+{% macro cand_table(title, blurb, rows) %}
+<section>
+  <h2>{{ title }}</h2>
+  <p class="muted">{{ blurb }}</p>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Title</th><th>Channel</th><th>Views</th><th>Age h</th>
+        <th>Views/h</th><th>Accel</th><th>Lift</th><th>Score</th><th>Labels</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in rows %}
+      <tr>
+        <td><a href="/discovery/candidates/{{ c.id }}">{{ c.title or c.external_id }}</a></td>
+        <td>{{ c.channel_name or c.creator or '—' }}</td>
+        <td>{{ c.views if c.views is not none else '—' }}</td>
+        <td>{{ '%.1f'|format(c.age_hours) if c.age_hours is not none else '—' }}</td>
+        <td>{{ '%.0f'|format(c.views_per_hour) if c.views_per_hour is not none else '—' }}</td>
+        <td>{{ '%.2f'|format(c.acceleration) if c.acceleration is not none else '—' }}</td>
+        <td>{{ '%.1f'|format(c.creator_lift) if c.creator_lift is not none else '—' }}{% if c.creator_lift is not none %}x{% endif %}</td>
+        <td>{{ '%.0f'|format(c.discovery_score) if c.discovery_score is not none else '—' }}</td>
+        <td>
+          {% for lab in c.discovery_labels or [] %}
+            <span class="label label-{{ lab }}">{{ lab }}</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9">None yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endmacro %}
+
+{{ cand_table('Emerging', 'Recently published with strong views/hour.', emerging) }}
+{{ cand_table('Accelerating', 'View velocity increasing across observation windows.', accelerating) }}
+{{ cand_table('Popular (not necessarily emerging)', 'High views and older. Often a large channel, not a new format.', popular) }}
+{{ cand_table('Top opportunities (promoted)', 'Passed discovery threshold and entered the existing analysis pipeline.', promoted) }}
+{% endblock %}

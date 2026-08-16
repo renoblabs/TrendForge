@@ -8,7 +8,9 @@ import httpx
 
 from sqlalchemy.orm import Session
 
-from trendforge.analysis.client import MissingAPIKeyError, get_analyzer
+from trendforge.analysis.client import MissingAPIKeyError, StubAnalyzer, get_analyzer
+from trendforge.analysis.parse import parse_format_analysis
+from trendforge.analysis.prompt import PROMPT_VERSION
 from trendforge.analysis.schema import FormatAnalysis
 from trendforge.config import get_settings
 from trendforge.models import (
@@ -97,6 +99,7 @@ def ingest_text(
             thumbnail_url=raw.thumbnail_url,
             raw_metadata=raw.raw_metadata or None,
             analysis_status=AnalysisStatus.PENDING,
+            data_origin="live",
         )
         db.add(row)
         created.append(row)
@@ -156,7 +159,7 @@ def apply_analysis_to_format(
     fmt.name = analysis.format_name
     fmt.description = analysis.format_description
     fmt.attention_mechanic = analysis.attention_mechanic
-    fmt.format_category = analysis.format_category
+    fmt.format_category = analysis.format_category or analysis.format_family
     fmt.hook_pattern = analysis.hook_pattern
     fmt.why_it_works = analysis.why_it_works
     fmt.variables = analysis.variables
@@ -240,7 +243,7 @@ def analyze_candidate(
             analyzer = get_analyzer(
                 settings, force_stub=force_stub or not settings.has_openrouter
             )
-        analysis = analyzer.analyze_candidate(candidate_to_dict(candidate))
+        analysis = parse_format_analysis(analyzer.analyze_candidate(candidate_to_dict(candidate)))
 
         # Cross-platform boost if other platforms already share this format_key
         format_key = slugify_format_key(analysis.format_key)
@@ -252,8 +255,20 @@ def analyze_candidate(
                 extra_cross = min(100.0, 40.0 + 20.0 * len(platforms))
 
         fmt = apply_analysis_to_format(db, analysis, extra_cross_platform=extra_cross)
+        previous = candidate.analysis_json
+        if previous:
+            history = list(candidate.analysis_history or [])
+            history.append(previous)
+            candidate.analysis_history = history[-20:]
+        payload = analysis.model_dump()
+        payload["analysis_timestamp"] = utcnow().isoformat()
+        payload["analyzer"] = type(analyzer).__name__
+        payload["model"] = (
+            "stub" if isinstance(analyzer, StubAnalyzer) else settings.openrouter_model
+        )
+        payload["prompt_version"] = PROMPT_VERSION
         candidate.format_id = fmt.id
-        candidate.analysis_json = analysis.model_dump()
+        candidate.analysis_json = payload
         candidate.analysis_status = AnalysisStatus.ANALYZED
         candidate.analysis_error = None
         db.commit()

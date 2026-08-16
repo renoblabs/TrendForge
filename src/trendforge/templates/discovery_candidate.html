@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{{ c.title or c.external_id }} — Discovery{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/discovery">Discovery</a> / {{ c.external_id }}</p>
+<section class="hero">
+  <h1>{{ c.title or '(untitled)' }}</h1>
+  <div class="stats">
+    {% for lab in c.discovery_labels or [] %}
+      <span class="label label-{{ lab }}">{{ lab }}</span>
+    {% endfor %}
+    <span>Score <strong>{{ '%.0f'|format(c.discovery_score or 0) }}</strong></span>
+    {% if c.promoted_at %}<span class="pill ok">Promoted</span>{% endif %}
+  </div>
+</section>
+
+<div class="detail-grid">
+  <section class="panel">
+    <h2>Identity</h2>
+    <p><strong>Channel:</strong> {{ c.channel_name or c.creator or '—' }}</p>
+    <p><strong>Published:</strong> {{ c.published_at.strftime('%Y-%m-%d %H:%M UTC') if c.published_at else '—' }}</p>
+    <p><strong>Duration:</strong> {{ c.duration if c.duration is not none else '—' }}s {% if c.is_short %}(Short){% endif %}</p>
+    <p><a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.url }}</a></p>
+    <p class="muted">Queries: {{ (c.source_queries or [c.source_query])|join(', ') }}</p>
+  </section>
+
+  <section class="panel">
+    <h2>Discovery signal</h2>
+    <p>Views <strong>{{ c.views if c.views is not none else '—' }}</strong></p>
+    <p>Velocity (views/hour) {{ '%.0f'|format(c.views_per_hour) if c.views_per_hour is not none else '—' }}</p>
+    <p>Acceleration {{ '%.2f'|format(c.acceleration) if c.acceleration is not none else 'insufficient history' }}x</p>
+    <p>Discovery score <strong>{{ '%.0f'|format(c.discovery_score or 0) }}</strong></p>
+    <p>Labels
+      {% for lab in c.discovery_labels or [] %}
+        <span class="label label-{{ lab }}">{{ lab }}</span>
+      {% else %}
+        —
+      {% endfor %}
+    </p>
+    <p>Age {{ '%.1f'|format(c.age_hours) if c.age_hours is not none else '—' }} h</p>
+    <p>Likes {{ c.likes if c.likes is not none else '—' }} · Comments {{ c.comments if c.comments is not none else '—' }}</p>
+    <p>Like rate {{ '%.4f'|format(c.like_rate) if c.like_rate is not none else '—' }}</p>
+    <p>Comment rate {{ '%.4f'|format(c.comment_rate) if c.comment_rate is not none else '—' }}</p>
+    <p>Creator baseline {{ '%.0f'|format(c.creator_baseline) if c.creator_baseline is not none else 'null (not enough channel history)' }}
+      {% if c.creator_baseline_estimated %} <span class="muted">(estimated)</span>{% endif %}
+    </p>
+    <p>Creator lift {{ '%.2f'|format(c.creator_lift) if c.creator_lift is not none else 'null' }}{% if c.creator_lift is not none %}x{% endif %}</p>
+  </section>
+
+  <section class="panel">
+    <h2>Observation history</h2>
+    {% if chart.dots %}
+    <svg class="obs-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Views over time">
+      <line x1="{{ chart.pad }}" y1="{{ chart.height - chart.pad }}" x2="{{ chart.width - chart.pad }}" y2="{{ chart.height - chart.pad }}" stroke="#2a2f3a" />
+      <line x1="{{ chart.pad }}" y1="{{ chart.pad }}" x2="{{ chart.pad }}" y2="{{ chart.height - chart.pad }}" stroke="#2a2f3a" />
+      <text x="{{ chart.pad }}" y="16" fill="#9aa0a6" font-size="11">{{ chart.max_v }} views</text>
+      <polyline fill="none" stroke="#6ea8fe" stroke-width="2" points="{{ chart.polyline }}" />
+      {% for x, y, v, t in chart.dots %}
+        <circle cx="{{ x }}" cy="{{ y }}" r="4" fill="#e8eaed" />
+      {% endfor %}
+      {% if chart.t0 %}
+      <text x="{{ chart.pad }}" y="{{ chart.height - 8 }}" fill="#9aa0a6" font-size="11">{{ chart.t0.strftime('%H:%M') }}</text>
+      <text x="{{ chart.width - 80 }}" y="{{ chart.height - 8 }}" fill="#9aa0a6" font-size="11">{{ chart.t1.strftime('%H:%M') }}</text>
+      {% endif %}
+    </svg>
+    {% else %}
+    <p class="muted">Need at least one observation with views.</p>
+    {% endif %}
+    <table class="table">
+      <thead><tr><th>Time</th><th>Views</th><th>Likes</th><th>Comments</th><th>Source</th></tr></thead>
+      <tbody>
+        {% for o in observations %}
+        <tr>
+          <td>{{ o.observed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ o.view_count if o.view_count is not none else '—' }}</td>
+          <td>{{ o.like_count if o.like_count is not none else '—' }}</td>
+          <td>{{ o.comment_count if o.comment_count is not none else '—' }}</td>
+          <td>{{ o.source }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No observations.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Format intelligence</h2>
+    <p>Status: {{ c.analysis_status.value }}</p>
+    {% if analysis %}
+      <p><strong>Surface:</strong> {{ analysis.surface_content or analysis.what_happens or '—' }}</p>
+      <p><strong>Format family:</strong> {{ analysis.format_family or analysis.format_key or '—' }}</p>
+      <p><strong>Primary mechanic:</strong> {{ analysis.primary_mechanic or '—' }}</p>
+      <p><strong>Secondary:</strong>
+        {% if analysis.secondary_mechanics %}{{ analysis.secondary_mechanics|join(', ') }}{% else %}—{% endif %}
+      </p>
+      {% if analysis.proposed_mechanic_label %}
+      <p class="muted">Proposed new mechanic: {{ analysis.proposed_mechanic_label }}</p>
+      {% endif %}
+      <p><strong>Hook:</strong> {{ analysis.first_second_hook or '—' }}</p>
+      <p><strong>Premise:</strong> {{ analysis.premise or analysis.format_description or '—' }}</p>
+      <p><strong>Why it may work:</strong> {{ analysis.reason_it_might_work or analysis.why_stop_scrolling or analysis.why_it_works or '—' }}</p>
+      {% if analysis.format_hypothesis %}
+      <h3>Format hypothesis</h3>
+      <p>{{ analysis.format_hypothesis }}</p>
+      {% endif %}
+      {% if analysis.variation_examples %}
+      <p class="muted">Mutations: {{ analysis.variation_examples|join(' · ') }}</p>
+      {% endif %}
+      <h3>Replication</h3>
+      <p>AI leverage {{ analysis.ai_leverage or '—' }}/5 · Variation density {{ analysis.variation_density_rating or '—' }}/5 · Production complexity {{ analysis.production_complexity_rating or '—' }}/5</p>
+      <p>IP dependency {{ analysis.ip_dependency or '—' }}</p>
+      {% if analysis.ip_notes %}<p class="muted">{{ analysis.ip_notes }}</p>{% endif %}
+      <h3>Analysis confidence</h3>
+      <p>{{ (analysis.analysis_confidence or 'medium')|capitalize }}</p>
+      <p class="muted">{{ analysis.analyzer or '—' }} · {{ analysis.model or '—' }} · {{ analysis.prompt_version or '—' }}
+        {% if analysis.analysis_timestamp %} · {{ analysis.analysis_timestamp }}{% endif %}
+      </p>
+    {% else %}
+      <p class="muted">Not analyzed yet. High-signal candidates are selected from discovery labels/score, then optionally interpreted by the LLM.</p>
+    {% endif %}
+    {% if c.format %}
+      <p>Linked format: <a href="/formats/{{ c.format.id }}">{{ c.format.name }}</a></p>
+    {% endif %}
+    <form method="post" action="/discovery/candidates/{{ c.id }}/promote">
+      <input type="hidden" name="force_stub" value="true" />
+      <button class="btn" type="submit">Analyze with stub LLM</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

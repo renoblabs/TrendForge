@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum as SAEnum,
     Float,
@@ -68,6 +69,22 @@ class DistributionStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class ProductionSpecStatus(str, Enum):
+    READY = "READY"
+    FAILED = "FAILED"
+
+
+class GenerationJobStatus(str, Enum):
+    QUEUED = "QUEUED"
+    PREPARING = "PREPARING"
+    SPEC_READY = "SPEC_READY"
+    AGENT_RUNNING = "AGENT_RUNNING"
+    COMFY_RUNNING = "COMFY_RUNNING"
+    REVIEWING = "REVIEWING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 class ContentCandidate(Base):
     __tablename__ = "content_candidates"
     __table_args__ = (UniqueConstraint("url", name="uq_candidate_url"),)
@@ -94,7 +111,35 @@ class ContentCandidate(Base):
     analysis_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     format_id: Mapped[Optional[int]] = mapped_column(ForeignKey("formats.id"), nullable=True)
 
+    external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    channel_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    channel_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    hashtags: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    source_query: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    source_queries: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    is_short: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    favorite_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    channel_subscriber_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    age_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    views_per_hour: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    acceleration: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    like_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    comment_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    creator_baseline: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    creator_baseline_estimated: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    creator_lift: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    discovery_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    discovery_breakdown: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    discovery_labels: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    promoted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    analysis_history: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    data_origin: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+
     format: Mapped[Optional["Format"]] = relationship(back_populates="candidates")
+    observations: Mapped[list["CandidateObservation"]] = relationship(
+        back_populates="candidate", order_by="CandidateObservation.observed_at"
+    )
 
     @property
     def engagement(self) -> Optional[float]:
@@ -187,6 +232,12 @@ class ContentAsset(Base):
     approval_status: Mapped[ApprovalStatus] = mapped_column(
         SAEnum(ApprovalStatus), default=ApprovalStatus.DRAFT
     )
+    generation_job_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    mime_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    source: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    format_family: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    width: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     variation: Mapped[Optional[FormatVariation]] = relationship(back_populates="assets")
     format: Mapped[Optional[Format]] = relationship(back_populates="assets")
@@ -234,3 +285,106 @@ class PerformanceRecord(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     distribution_job: Mapped[DistributionJob] = relationship(back_populates="performance_records")
+
+
+class CandidateObservation(Base):
+    __tablename__ = "candidate_observations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    candidate_id: Mapped[int] = mapped_column(ForeignKey("content_candidates.id"), nullable=False, index=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    view_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    like_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    comment_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    favorite_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    channel_subscriber_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    rank: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(64), default="youtube")
+    raw_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+
+    candidate: Mapped[ContentCandidate] = relationship(back_populates="observations")
+
+
+class DiscoveryRun(Base):
+    __tablename__ = "discovery_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String(32), default="discover")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    queries_used: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    candidates_found: Mapped[int] = mapped_column(Integer, default=0)
+    new_candidates: Mapped[int] = mapped_column(Integer, default=0)
+    duplicates: Mapped[int] = mapped_column(Integer, default=0)
+    promoted_candidates: Mapped[int] = mapped_column(Integer, default=0)
+    observations_written: Mapped[int] = mapped_column(Integer, default=0)
+    api_errors: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class FormatBrainstormSet(Base):
+    """Persisted ideation output. Not evidence, not a candidate, not a discovery signal."""
+
+    __tablename__ = "format_brainstorm_sets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    format_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    analyzer: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    requested_count: Mapped[int] = mapped_column(Integer, default=10)
+    emphasis: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    ideas_json: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+
+
+class ProductionSpec(Base):
+    """Production brief for a selected idea. Not evidence and not a generated video."""
+
+    __tablename__ = "production_specs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    format_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    source_brainstorm_set_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("format_brainstorm_sets.id"), nullable=True, index=True
+    )
+    source_idea_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    analyzer: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    status: Mapped[ProductionSpecStatus] = mapped_column(
+        SAEnum(ProductionSpecStatus), default=ProductionSpecStatus.READY
+    )
+    spec_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+
+
+class GenerationJob(Base):
+    __tablename__ = "generation_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    status: Mapped[GenerationJobStatus] = mapped_column(
+        SAEnum(GenerationJobStatus), default=GenerationJobStatus.QUEUED, index=True
+    )
+    format_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    source_brainstorm_set_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("format_brainstorm_sets.id"), nullable=True
+    )
+    source_idea_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
+    production_spec_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("production_specs.id"), nullable=True
+    )
+    requested_duration_seconds: Mapped[int] = mapped_column(Integer, default=20)
+    variant_count: Mapped[int] = mapped_column(Integer, default=1)
+    style: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    voice: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    audio_preferences: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    agent: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    agent_session_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    comfy_workflow_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    comfy_workflow_version: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    output_asset_ids: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    job_metadata_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)

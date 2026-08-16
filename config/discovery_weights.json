@@ -1,0 +1,24 @@
+{
+  "weights": {
+    "velocity": 0.30,
+    "acceleration": 0.25,
+    "engagement": 0.15,
+    "creator_lift": 0.20,
+    "recency": 0.10
+  },
+  "normalization": {
+    "velocity_views_per_hour_at_100": 50000,
+    "acceleration_at_100": 3.0,
+    "engagement_at_100": 0.08,
+    "creator_lift_at_100": 10.0,
+    "recency_hours_full": 6,
+    "recency_hours_zero": 168
+  },
+  "labels": {
+    "popular_min_views": 500000,
+    "popular_min_age_hours": 72,
+    "emerging_max_age_hours": 48,
+    "emerging_min_views_per_hour": 5000,
+    "accelerating_min_factor": 1.4
+  }
+}

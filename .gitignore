@@ -18,5 +18,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *.log
+data/generated/
+data/generation_jobs/
 .idea/
 .vscode/

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Generation #{{ job.id }} — TrendForge{% endblock %}
+{% block extra_head %}
+{% if job.status in ['QUEUED', 'PREPARING', 'AGENT_RUNNING', 'COMFY_RUNNING', 'REVIEWING'] %}
+<meta http-equiv="refresh" content="8">
+{% endif %}
+{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/generation">Generation</a> / Job #{{ job.id }}</p>
+<section class="hero">
+  <h1>Generation #{{ job.id }}</h1>
+  <p><span class="pill">{{ job.status }}</span>
+    <span class="muted">created {{ job.created_at.strftime('%Y-%m-%d %H:%M UTC') if job.created_at else '' }}
+      · updated {{ job.updated_at.strftime('%Y-%m-%d %H:%M UTC') if job.updated_at else '' }}</span>
+  </p>
+  {% if job.error_message %}<p class="alert err">{{ job.error_message }}</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Source</h2>
+  <p>Format: <code>{{ job.format_family }}</code></p>
+  <p>Duration {{ job.requested_duration_seconds }}s · variants {{ job.variant_count }} (this slice runs 1)</p>
+  {% if idea %}<p>Idea: <strong>{{ idea.idea_title }}</strong> — {{ idea.hook }}</p>{% endif %}
+  {% if spec %}<p><a href="/production/specs/{{ spec.id }}">Production spec #{{ spec.id }}</a></p>{% endif %}
+  <p>Style {{ job.style or '—' }} · Voice {{ job.voice or '—' }} · Audio {{ job.audio_preferences or '—' }}</p>
+</section>
+
+<section class="panel">
+  <h2>Execution</h2>
+  <p>Agent: Cursor Agent CLI ({{ job.agent or 'cursor' }})</p>
+  <p>Execution: Comfy Cloud · MCP: native comfy-cloud</p>
+  <p>Local Comfy used: {{ 'YES' if meta.get('local_comfy_used') else 'NO' }}
+    · Cloud MCP used: {{ 'YES' if meta.get('cloud_mcp_used') else 'NO' }}</p>
+  <p>Agent PID: {{ meta.get('agent_pid') or '—' }}</p>
+  <p>Agent started: {{ meta.get('agent_started') or '—' }}</p>
+  <p>Agent finished: {{ meta.get('agent_finished') or '—' }}</p>
+  <p>Cloud job ID: {{ meta.get('cloud_job_id') or job.agent_session_id or '—' }}</p>
+  <p>Cloud video model: {{ meta.get('cloud_model', {}).get('label') or '—' }}</p>
+  <p>Workflow: {{ job.comfy_workflow_id or '—' }} {{ job.comfy_workflow_version or '' }}</p>
+  {% if workflow.model %}<p>Model: {{ workflow.model }}</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Output</h2>
+  {% for asset in assets %}
+  <p>{{ asset.mime_type }} · {{ asset.width or '—' }}×{{ asset.height or '—' }}{% if asset.duration %} · {{ asset.duration }}s{% endif %}</p>
+  {% if asset.mime_type and asset.mime_type.startswith('image/') %}
+  <p><img src="/generation/assets/{{ asset.id }}/file" alt="generated output" style="max-width:360px;height:auto;border-radius:8px;"></p>
+  {% elif asset.mime_type and asset.mime_type.startswith('video/') %}
+  <p><video src="/generation/assets/{{ asset.id }}/file" controls style="max-width:360px;border-radius:8px;"></video></p>
+  {% endif %}
+  <p><a href="/generation/assets/{{ asset.id }}/file">Open asset</a></p>
+  {% else %}
+  <p class="muted">No asset yet. Status is {{ job.status }}.</p>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2>Log / events</h2>
+  <ul>
+    {% for ev in events %}
+    <li><span class="muted">{{ ev.at }}</span> — {{ ev.event }}{% if ev.detail %}: {{ ev.detail }}{% endif %}</li>
+    {% else %}
+    <li class="muted">No events.</li>
+    {% endfor %}
+  </ul>
+  {% if agent_log %}
+  <details>
+    <summary>Agent process log</summary>
+    <pre class="muted">{{ agent_log }}</pre>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}

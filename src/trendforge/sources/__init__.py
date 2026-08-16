@@ -110,8 +110,8 @@ class TikTokSource(_UnimplementedSource):
 class YouTubeSource(_UnimplementedSource):
     name = "youtube"
     reason = (
-        "YouTube Data API v3 can search Shorts but quota is expensive (search=100 units). "
-        "Documented for Phase 2; use ManualSource for now."
+        "This TrendSource stub is unused. Live Shorts gathering is YouTubeDiscoveryProvider "
+        "via scripts/discover_youtube.py, observe_youtube.py, and run_gathering.py."
     )
 
 

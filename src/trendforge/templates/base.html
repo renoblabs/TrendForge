@@ -4,13 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}TrendForge{% endblock %}</title>
+  {% block extra_head %}{% endblock %}
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <header class="top">
-    <div class="brand"><a href="/">TrendForge</a> <span class="tag">Phase 1</span></div>
+    <div class="brand"><a href="/">TrendForge</a> <span class="tag">Phase 1 + YT</span></div>
     <nav>
       <a href="/" class="{% if page == 'queue' %}active{% endif %}">Opportunity Queue</a>
+      <a href="/discovery" class="{% if page == 'discovery' %}active{% endif %}">Discovery</a>
+      <a href="/discovery/opportunities" class="{% if page == 'opportunities' %}active{% endif %}">Format Opportunities</a>
+      <a href="/generation" class="{% if page == 'generation' %}active{% endif %}">Generation</a>
       <a href="/candidates" class="{% if page == 'candidates' %}active{% endif %}">Candidates</a>
       <a href="/formats" class="{% if page == 'formats' %}active{% endif %}">Formats</a>
       <a href="/ingest" class="{% if page == 'ingest' %}active{% endif %}">Ingest</a>
@@ -20,6 +24,11 @@
         <span class="pill ok">OpenRouter ready</span>
       {% else %}
         <span class="pill warn">No LLM key — seed/stub mode</span>
+      {% endif %}
+      {% if has_youtube %}
+        <span class="pill ok">YouTube API</span>
+      {% else %}
+        <span class="pill warn">No YouTube key</span>
       {% endif %}
     </div>
   </header>

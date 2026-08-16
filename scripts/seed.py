@@ -349,6 +349,7 @@ def seed(db_path: Path | None = None, reset: bool = False) -> None:
                     analysis_status=AnalysisStatus.ANALYZED,
                     analysis_json=analysis.model_dump(),
                     format_id=fmt.id,
+                    data_origin="seed",
                 )
                 db.add(row)
             # Ensure BUILD/WATCH from scoring

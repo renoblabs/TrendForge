@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Production spec — {{ spec.title or row.id }}{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/discovery/opportunities">Format Opportunities</a> / Production spec #{{ row.id }}</p>
+<section class="hero">
+  <h1>{{ spec.title or 'Production spec' }}</h1>
+  <p class="muted">Executable creative brief. Not a generated video. Not research evidence.</p>
+  <p>
+    <a class="btn" href="/production/specs/{{ row.id }}/export.md">Download production_spec.md</a>
+    <span class="pill">{{ row.status }}</span>
+    <span class="pill">{{ row.prompt_version }}</span>
+    <span class="pill">{{ row.model }}</span>
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Format</h2>
+  <p><code>{{ spec.format_family }}</code></p>
+  <p>Specific format: {{ spec.specific_format }}</p>
+  <p>Mechanic: <strong>{{ spec.primary_mechanic }}</strong>
+    {% if spec.secondary_mechanics %} · {{ spec.secondary_mechanics|join(', ') }}{% endif %}
+  </p>
+  {% if spec.format_hypothesis %}<p>Hypothesis: {{ spec.format_hypothesis }}</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Idea</h2>
+  {% if idea %}
+  <p><strong>{{ idea.idea_title }}</strong></p>
+  <p>Hook: {{ idea.hook }}</p>
+  <p>Premise: {{ idea.premise }}</p>
+  {% else %}
+  <p>Hook: {{ spec.hook }}</p>
+  <p>Premise: {{ spec.premise }}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Target</h2>
+  <p>Duration <strong>{{ spec.duration_seconds }}</strong>s · Aspect <strong>{{ spec.aspect_ratio }}</strong></p>
+  <p>Audience: {{ spec.target_audience or '—' }}</p>
+  <p>Complexity <strong>{{ spec.production_complexity }}</strong>/5</p>
+  <ul>
+    {% for reason in spec.complexity_reasons or [] %}
+    <li>{{ reason }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Story</h2>
+  <ol>
+    {% for beat in spec.story_beats or [] %}
+    <li>{{ beat.start_seconds }}–{{ beat.end_seconds }}s — <strong>{{ beat.purpose }}</strong>
+      <p>{{ beat.action }}</p>
+      <p class="muted">{{ beat.visual_requirement }} · {{ beat.audio_requirement }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="panel">
+  <h2>Shots</h2>
+  {% for shot in spec.shots or [] %}
+  <h3>Shot {{ shot.shot_number }} ({{ shot.start_seconds }}–{{ shot.end_seconds }}s)</h3>
+  <p>{{ shot.purpose }} — {{ shot.action }}</p>
+  <p class="muted">{{ shot.camera }} · {{ shot.framing }} · {{ shot.subject }}</p>
+  <p>{{ shot.environment }}</p>
+  <p>Continuity: {{ shot.continuity_notes }}</p>
+  <p>Dialogue: {{ shot.dialogue or '—' }}</p>
+  <p>Audio: {{ shot.audio }}</p>
+  <p class="muted">{{ shot.generation_notes }}</p>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2>Characters</h2>
+  {% for ch in spec.characters or [] %}
+  <h3>{{ ch.name }} <span class="muted">{{ ch.role }}</span></h3>
+  <p>{{ ch.appearance }}</p>
+  <p>{{ ch.behavior }}</p>
+  <p class="muted">{{ ch.visual_constraints }} · {{ ch.continuity_constraints }}</p>
+  {% endfor %}
+  <p>Environment: {{ spec.environment }}</p>
+  <p>Props: {{ (spec.props or [])|join(', ') or '—' }}</p>
+</section>
+
+<section class="panel">
+  <h2>Audio</h2>
+  <p>Narration: {{ spec.narration or '—' }}</p>
+  <p>{{ spec.audio_direction }}</p>
+  <p>SFX: {{ (spec.sound_effects or [])|join(', ') or '—' }}</p>
+  <p>Music: {{ spec.music or 'none' }}</p>
+  <p>Priority: {{ spec.audio_priority }}</p>
+  <ul>
+    {% for line in spec.dialogue or [] %}
+    <li>{{ line.start_seconds }}s {{ line.speaker }}: {{ line.text }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Visual</h2>
+  <p>{{ spec.visual_style }}</p>
+  <p>{{ spec.camera_direction }}</p>
+  <h3>Continuity</h3>
+  <ul>
+    {% for item in spec.continuity_requirements or [] %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+  <h3>Do not</h3>
+  <ul>
+    {% for item in spec.negative_constraints or [] %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>ComfyUI (planning only)</h2>
+  <p class="muted">Recommendations, not workflows. This page does not generate video.</p>
+  <ul>
+    {% for rec in spec.comfyui_recommendations or [] %}
+    <li><strong>{{ rec.technique }}</strong> [{{ rec.priority }}] — {{ rec.reason }}
+      <span class="muted">inputs: {{ (rec.required_inputs or [])|join(', ') or '—' }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <h3>Required assets</h3>
+  <ul>
+    {% for asset in spec.required_assets or [] %}
+    <li>{{ asset.asset_type }} — {{ asset.description }}
+      ({{ asset.source }}{% if asset.mandatory %}, mandatory{% endif %})</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>QA</h2>
+  <ul>
+    {% for item in spec.qa_checklist or [] %}
+    <li>{% if item.required %}required{% else %}optional{% endif %}: {{ item.check }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Originality / IP</h2>
+  <p>{{ spec.originality_notes }}</p>
+  <p>{{ spec.ip_considerations }}</p>
+</section>
+
+<section class="panel">
+  <h2>Copy / export</h2>
+  <textarea class="copy-block" readonly rows="16">{{ export_text }}</textarea>
+</section>
+{% endblock %}
