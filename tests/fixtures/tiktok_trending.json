@@ -1,0 +1,51 @@
+[
+  {
+    "_rank": 1,
+    "_source": "S1-explore-api",
+    "_input": {"content_type": "video", "country_code": "US"},
+    "id": "trend1",
+    "desc": "POV the plot twist hits #comedy",
+    "createTimeISO": "REPLACE_RECENT",
+    "author": {"id": "a1", "uniqueId": "smalltrend", "nickname": "Small Trend", "verified": false},
+    "authorStats": {"followerCount": 8400},
+    "stats": {"playCount": 12000, "diggCount": 900, "commentCount": 40, "shareCount": 12, "collectCount": 30},
+    "video": {"duration": 14, "cover": "https://example.com/cover1.jpg"},
+    "music": {"title": "original sound - smalltrend"},
+    "challenges": [{"title": "comedy"}]
+  },
+  {
+    "_rank": 2,
+    "_input": {"content_type": "video", "country_code": "US"},
+    "id": "trend-old",
+    "desc": "old viral",
+    "createTimeISO": "2024-01-01T00:00:00.000Z",
+    "author": {"uniqueId": "oldtrend"},
+    "stats": {"playCount": 8000000, "diggCount": 100000},
+    "video": {"duration": 9}
+  },
+  {
+    "_rank": 3,
+    "_input": {"content_type": "video", "country_code": "US"},
+    "id": "trend-long",
+    "desc": "too long",
+    "createTimeISO": "REPLACE_RECENT",
+    "author": {"uniqueId": "longform"},
+    "stats": {"playCount": 50},
+    "video": {"duration": 180}
+  },
+  {
+    "_rank": 4,
+    "_input": {"content_type": "video", "country_code": "US"},
+    "id": "trend-es",
+    "desc": "hola",
+    "createTimeISO": "REPLACE_RECENT",
+    "author": {"uniqueId": "esacct"},
+    "textLanguage": "es",
+    "stats": {"playCount": 20},
+    "video": {"duration": 11}
+  },
+  {
+    "_warning": "endpoint_deprecated",
+    "_warningDetail": "hashtag mode deprecated"
+  }
+]

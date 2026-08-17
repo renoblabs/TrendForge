@@ -13,6 +13,7 @@
     <nav>
       <a href="/" class="{% if page == 'queue' %}active{% endif %}">Opportunity Queue</a>
       <a href="/discovery" class="{% if page == 'discovery' %}active{% endif %}">Discovery</a>
+      <a href="/acquisition" class="{% if page == 'acquisition' %}active{% endif %}">Acquisition</a>
       <a href="/discovery/opportunities" class="{% if page == 'opportunities' %}active{% endif %}">Format Opportunities</a>
       <a href="/generation" class="{% if page == 'generation' %}active{% endif %}">Generation</a>
       <a href="/candidates" class="{% if page == 'candidates' %}active{% endif %}">Candidates</a>
@@ -29,6 +30,11 @@
         <span class="pill ok">YouTube API</span>
       {% else %}
         <span class="pill warn">No YouTube key</span>
+      {% endif %}
+      {% if has_apify %}
+        <span class="pill ok">Apify</span>
+      {% else %}
+        <span class="pill warn">No Apify token</span>
       {% endif %}
     </div>
   </header>

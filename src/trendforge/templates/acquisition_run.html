@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Acquisition run {{ run.id }} — TrendForge{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/acquisition">Data Sources</a> / run {{ run.id }}</p>
+<section class="hero">
+  <h1>{{ run.source }} / {{ run.provider }}</h1>
+  <p class="muted">{{ run.status }} · started {{ run.started_at.strftime('%Y-%m-%d %H:%M') if run.started_at else '—' }} UTC</p>
+</section>
+
+<section class="panel">
+  <h2>Run detail</h2>
+  <table class="table">
+    <tbody>
+      <tr><th>Mode</th><td>{{ (run.run_metadata_json or {}).get('mode') or 'default' }}{% if (run.run_metadata_json or {}).get('experiment') %} · {{ (run.run_metadata_json or {}).get('experiment') }}{% endif %}</td></tr>
+      <tr><th>Profile</th><td><code>{{ run.profile or (run.run_metadata_json or {}).get('profile') or '—' }}</code></td></tr>
+      <tr><th>Queries</th><td>{{ ((run.run_metadata_json or {}).get('queries') or [])|join(', ') or '—' }}</td></tr>
+      <tr><th>Window</th><td>{{ (run.run_metadata_json or {}).get('window') or '—' }}</td></tr>
+      <tr><th>Regions</th><td>{{ ((run.run_metadata_json or {}).get('regions') or [])|join(', ') or '—' }}</td></tr>
+      <tr><th>Actor</th><td><code>{{ run.actor_id or '—' }}</code></td></tr>
+      <tr><th>Apify Run ID</th><td><code>{{ run.apify_run_id or '—' }}</code></td></tr>
+      <tr><th>Dataset ID</th><td><code>{{ run.apify_dataset_id or '—' }}</code></td></tr>
+      <tr><th>Items found</th><td>{{ run.items_found }}</td></tr>
+      <tr><th>Items normalized</th><td>{{ (run.run_metadata_json or {}).get('items_normalized', run.items_new + run.items_duplicate) }}</td></tr>
+      <tr><th>Items persisted</th><td>{{ (run.run_metadata_json or {}).get('items_persisted', run.items_new + run.items_duplicate) }}</td></tr>
+      <tr><th>New</th><td>{{ run.items_new }}</td></tr>
+      <tr><th>Duplicates</th><td>{{ run.items_duplicate }}</td></tr>
+      <tr><th>Rejected</th><td>{{ run.items_rejected }}</td></tr>
+      <tr><th>Cost</th><td>{% if run.actual_cost is not none %}{{ run.actual_cost }} {{ run.currency or 'USD' }}{% else %}unknown{% endif %}</td></tr>
+      <tr><th>Raw dataset</th><td><code>{{ (run.run_metadata_json or {}).get('raw_dataset_path') or '—' }}</code></td></tr>
+    </tbody>
+  </table>
+  {% set sq = (run.run_metadata_json or {}).get('sampling_quality') or {} %}
+  {% set pop = (run.run_metadata_json or {}).get('population') or {} %}
+  {% if sq %}
+  <h3>Sampling quality</h3>
+  <p class="muted">Acquisition-population indicators, not opportunity scores. Unknown language is kept at ingest and is not North American relevance.</p>
+  <table class="table">
+    <tbody>
+      <tr><th>Recent (≤24h)</th><td>{% if sq.recent_rate is not none %}{{ '%.0f'|format(sq.recent_rate * 100) }}%{% else %}—{% endif %}</td></tr>
+      <tr><th>Short</th><td>{% if sq.short_rate is not none %}{{ '%.0f'|format(sq.short_rate * 100) }}%{% else %}—{% endif %}</td></tr>
+      <tr><th>English (Actor language field)</th><td>{% if sq.english_rate is not none %}{{ '%.0f'|format(sq.english_rate * 100) }}%{% else %}—{% endif %}{% if sq.unknown_language_rate is not none %} · unknown {{ '%.0f'|format(sq.unknown_language_rate * 100) }}%{% endif %}</td></tr>
+      <tr><th>NA region signal</th><td>{% if sq.north_america_signal_rate is not none %}{{ '%.0f'|format(sq.north_america_signal_rate * 100) }}%{% else %}—{% endif %}</td></tr>
+      <tr><th>New candidate rate</th><td>{% if sq.new_candidate_rate is not none %}{{ '%.0f'|format(sq.new_candidate_rate * 100) }}%{% else %}—{% endif %}</td></tr>
+      <tr><th>Duplicate rate</th><td>{% if sq.duplicate_rate is not none %}{{ '%.0f'|format(sq.duplicate_rate * 100) }}%{% else %}—{% endif %}</td></tr>
+      <tr><th>Discovery yield</th><td>{% if pop.discovery_yield is not none %}{{ '%.0f'|format(pop.discovery_yield * 100) }}% <span class="muted">new / persisted</span>{% else %}—{% endif %}</td></tr>
+      <tr><th>Recentness yield</th><td>{% if pop.recentness_yield is not none %}{{ '%.0f'|format(pop.recentness_yield * 100) }}% <span class="muted">recent persisted / persisted</span>{% else %}—{% endif %}</td></tr>
+      <tr><th>High-signal yield</th><td>{% if pop.high_signal_yield is not none %}{{ '%.0f'|format(pop.high_signal_yield * 100) }}% <span class="muted">high-signal / persisted</span>{% else %}—{% endif %}</td></tr>
+    </tbody>
+  </table>
+  {% endif %}
+  {% set qy = (run.run_metadata_json or {}).get('query_yield') or {} %}
+  {% if qy %}
+  <h3>Query yield</h3>
+  <p class="muted">new / raw items for that search term. Exploratory sampling quality, not a predictor.</p>
+  <table class="table">
+    <thead><tr><th>Query</th><th>Raw</th><th>New</th><th>Duplicates</th><th>Rejected</th><th>Yield</th></tr></thead>
+    <tbody>
+      {% for name, row in qy.items() %}
+      <tr>
+        <td><code>{{ row.query or name }}</code></td>
+        <td>{{ row.raw }}</td>
+        <td>{{ row.new }}</td>
+        <td>{{ row.duplicates }}</td>
+        <td>{{ row.rejected }}</td>
+        <td>{% if row.new_rate is not none %}{{ '%.0f'|format(row.new_rate * 100) }}%{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% set cb = (run.run_metadata_json or {}).get('creator_baselines') or pop.get('creator_baselines') or {} %}
+  {% if cb and cb.get('creators_processed') %}
+  <h3>Creator baseline (measurement)</h3>
+  <p class="muted">{{ cb.definition }}</p>
+  <table class="table">
+    <tbody>
+      <tr><th>Creators processed</th><td>{{ cb.creators_processed }}</td></tr>
+      <tr><th>Creators with baseline</th><td>{{ cb.creators_with_baseline }}</td></tr>
+      <tr><th>Reels with creator lift</th><td>{{ cb.reels_with_creator_lift }}</td></tr>
+      <tr><th>Median creator lift</th><td>{% if cb.median_creator_lift is not none %}{{ '%.2f'|format(cb.median_creator_lift) }}×{% else %}—{% endif %}</td></tr>
+    </tbody>
+  </table>
+  {% endif %}
+  {% if pop %}
+  <p class="muted">Median views {{ pop.median_views if pop.median_views is not none else '—' }} · median age {{ pop.median_age_hours if pop.median_age_hours is not none else '—' }}h · median views/h {{ pop.median_views_per_hour if pop.median_views_per_hour is not none else '—' }} · follower completeness {{ pop.creator_followers_completeness }}</p>
+  {% endif %}
+  {% set reasons = (run.run_metadata_json or {}).get('reject_reasons') or {} %}
+  {% if reasons %}
+  <p class="muted">Reject reasons:
+    {% for key, value in reasons.items() %}
+      <code>{{ key }}</code> {{ value }}{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+  {% set cmp = (run.run_metadata_json or {}).get('comparison') %}
+  {% if cmp %}
+  <p class="muted">Previous other-Actor run #{{ cmp.id }} ({{ cmp.actor_id }}): found {{ cmp.items_found }} new {{ cmp.items_new }} dup {{ cmp.items_duplicate }} rejected {{ cmp.items_rejected }} cost {{ cmp.actual_cost if cmp.actual_cost is not none else 'unknown' }}</p>
+  {% endif %}
+  {% if run.errors %}
+  <p class="alert err">{{ run.errors }}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Quality sample</h2>
+  <p class="muted">Are these useful discovery candidates? Missing metrics stay blank (unknown), not zero.</p>
+  {% set sample = (run.run_metadata_json or {}).get('quality_sample') or [] %}
+  {% if sample %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Query</th><th>Title / caption</th><th>Creator</th><th>Followers</th>
+        <th>Views</th><th>Age h</th><th>Dur s</th><th>Likes</th><th>Shares</th><th>Lang</th><th>URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in sample %}
+      <tr>
+        <td>{{ row.source_query or '—' }}</td>
+        <td>{{ row.title or '—' }}</td>
+        <td>{{ row.creator or '—' }}</td>
+        <td>{{ row.creator_followers if row.creator_followers is not none else '—' }}</td>
+        <td>{{ row.views if row.views is not none else '—' }}</td>
+        <td>{% if row.get('age_hours') is not none %}{{ '%.1f'|format(row.get('age_hours')) }}{% else %}—{% endif %}</td>
+        <td>{{ row.duration if row.duration is not none else '—' }}</td>
+        <td>{{ row.likes if row.likes is not none else '—' }}</td>
+        <td>{{ row.shares if row.shares is not none else '—' }}</td>
+        <td>{{ row.language_signal or '—' }}</td>
+        <td>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noreferrer">open</a>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No normalized sample for this run.</p>
+  {% endif %}
+  {% set rejected_sample = (run.run_metadata_json or {}).get('rejected_sample') or [] %}
+  {% if rejected_sample %}
+  <h3>Rejected sample</h3>
+  <p class="muted">Not persisted. Used to inspect whether recency/short/language filters are working.</p>
+  <table class="table">
+    <thead>
+      <tr><th>Reason</th><th>Query</th><th>Creator</th><th>Views</th><th>Dur s</th><th>Age h</th><th>URL</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rejected_sample %}
+      <tr>
+        <td>{{ row.reject_reason or '—' }}</td>
+        <td>{{ row.source_query or '—' }}</td>
+        <td>{{ row.creator or '—' }}</td>
+        <td>{{ row.views if row.views is not none else '—' }}</td>
+        <td>{{ row.duration if row.duration is not none else '—' }}</td>
+        <td>{% if row.get('age_hours') is not none %}{{ '%.1f'|format(row.get('age_hours')) }}{% else %}—{% endif %}</td>
+        <td>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noreferrer">open</a>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+{% if candidates %}
+<section class="panel">
+  <h2>Persisted candidates</h2>
+  <table class="table">
+    <thead>
+      <tr><th>Title</th><th>Creator</th><th>Views</th><th>Baseline</th><th>Lift</th><th>Sample</th><th>Queries</th></tr>
+    </thead>
+    <tbody>
+      {% for c in candidates %}
+      <tr>
+        <td><a href="/discovery/candidates/{{ c.id }}">{{ c.title or c.external_id }}</a></td>
+        <td>{{ c.channel_name or c.creator or '—' }}</td>
+        <td>{{ c.views if c.views is not none else '—' }}</td>
+        {% set hist = (c.raw_metadata or {}).get('creator_history') or {} %}
+        <td>{% if hist.creator_baseline_views is not none %}{{ '%.0f'|format(hist.creator_baseline_views) }}{% else %}—{% endif %}</td>
+        <td>{% if hist.creator_lift is not none %}{{ '%.2f'|format(hist.creator_lift) }}×{% else %}—{% endif %}</td>
+        <td>{{ hist.baseline_sample_size if hist.baseline_sample_size is not none else '—' }}</td>
+        <td>{{ (c.source_queries or [c.source_query])|join(', ') or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

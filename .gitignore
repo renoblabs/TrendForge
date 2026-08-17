@@ -10,6 +10,7 @@ venv/
 .env
 *.db
 data/*.db
+data/acquisition/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

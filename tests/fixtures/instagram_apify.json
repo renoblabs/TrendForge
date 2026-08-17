@@ -1,0 +1,36 @@
+[
+  {
+    "id": "3760479727136600867",
+    "type": "Video",
+    "shortCode": "DQv6GNRCPMj",
+    "caption": "garden bird #birdsofinstagram",
+    "hashtags": ["birdsofinstagram", "gardenbirds"],
+    "url": "https://www.instagram.com/p/DQv6GNRCPMj/",
+    "commentsCount": 23,
+    "displayUrl": "https://example.com/cover.jpg",
+    "videoPlayCount": 2419,
+    "igPlayCount": 2419,
+    "likesCount": -1,
+    "timestamp": "2025-11-07T08:39:32.000Z",
+    "ownerUsername": "theresenybu",
+    "ownerId": "241146166",
+    "productType": "clips",
+    "videoDuration": 30,
+    "inputUrl": "https://www.instagram.com/explore/tags/pov",
+    "reshareCount": 4
+  },
+  {
+    "shortCode": "noMetricsReel",
+    "url": "https://www.instagram.com/reel/noMetricsReel/",
+    "productType": "clips",
+    "caption": "unknown language metadata",
+    "ownerUsername": "anon"
+  },
+  {
+    "shortCode": "photoSkip",
+    "url": "https://www.instagram.com/p/photoSkip/",
+    "productType": "feed",
+    "type": "Image",
+    "likesCount": 10
+  }
+]

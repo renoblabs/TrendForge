@@ -102,8 +102,8 @@ class _UnimplementedSource:
 class TikTokSource(_UnimplementedSource):
     name = "tiktok"
     reason = (
-        "TikTok Research API is academic-only; commercial Display/Content APIs do not "
-        "provide broad trending discovery suitable for this MVP. Use ManualSource."
+        "Live TikTok gathering uses Apify via python scripts/acquire.py --source tiktok, "
+        "not this TrendSource class."
     )
 
 
@@ -118,8 +118,8 @@ class YouTubeSource(_UnimplementedSource):
 class InstagramSource(_UnimplementedSource):
     name = "instagram"
     reason = (
-        "Instagram Graph API is primarily for owned Business accounts, not public trend "
-        "discovery. Use ManualSource."
+        "Live Instagram gathering uses Apify via python scripts/acquire.py --source instagram, "
+        "not this TrendSource class."
     )
 
 

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "7543693751290481942",
+    "text": "ootd #foruyou",
+    "textLanguage": "en",
+    "createTimeISO": "2025-08-28T17:44:35.000Z",
+    "webVideoUrl": "https://www.tiktok.com/@gretalynnhihi/video/7543693751290481942",
+    "playCount": 145900,
+    "diggCount": 23400,
+    "commentCount": 46,
+    "shareCount": 145,
+    "collectCount": 800,
+    "authorMeta": {
+      "id": "6733984297591636998",
+      "name": "gretalynnhihi",
+      "fans": 51200,
+      "profileUrl": "https://www.tiktok.com/@gretalynnhihi"
+    },
+    "musicMeta": { "musicName": "original sound" },
+    "videoMeta": { "duration": 15, "coverUrl": "https://example.com/cover.jpg" },
+    "hashtags": [{ "name": "foruyou" }],
+    "searchQuery": "ootd"
+  },
+  {
+    "id": "missing-metrics",
+    "text": "no counts yet",
+    "webVideoUrl": "https://www.tiktok.com/@x/video/missing-metrics",
+    "authorMeta": { "name": "x" },
+    "createTime": 1750000000
+  },
+  {
+    "id": "es-video",
+    "text": "hola",
+    "textLanguage": "es",
+    "webVideoUrl": "https://www.tiktok.com/@es/video/es-video",
+    "playCount": 10
+  }
+]

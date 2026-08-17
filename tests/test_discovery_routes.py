@@ -42,7 +42,9 @@ def test_discovery_home_links_to_opportunities(client: TestClient):
     assert "/discovery/opportunities" in response.text
     assert "/generation" in response.text
     assert "Gathering schedule" in response.text
-    assert "Run discover now" in response.text
+    assert "Run YouTube discover" in response.text
+    assert "Run TikTok discover" not in response.text
+    assert "/acquisition" in response.text
 
 
 def test_gather_route_without_youtube_key(client: TestClient, monkeypatch):

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     postiz_api_key: str = ""
     postiz_base_url: str = "https://api.postiz.com/public/v1"
 
+    apify_api_token: str = ""
+    apify_api_base_url: str = "https://api.apify.com/v2"
+
     @property
     def db_path(self) -> Path:
         path = Path(self.trendforge_db_path)
@@ -46,6 +49,10 @@ class Settings(BaseSettings):
     @property
     def has_youtube(self) -> bool:
         return bool(self.youtube_api_key.strip())
+
+    @property
+    def has_apify(self) -> bool:
+        return bool(self.apify_api_token.strip())
 
 
 @lru_cache
@@ -79,5 +86,11 @@ def load_family_weights() -> dict:
 
 def load_generation_config() -> dict:
     path = CONFIG_DIR / "generation.json"
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_data_sources_config() -> dict:
+    path = CONFIG_DIR / "data_sources.json"
     with path.open(encoding="utf-8") as f:
         return json.load(f)

@@ -2,12 +2,13 @@
 {% block title %}Discovery — TrendForge{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>YouTube Discovery</h1>
-  <p>{{ total }} Shorts stored. <strong>POPULAR</strong> is not <strong>EMERGING</strong> is not <strong>ACCELERATING</strong>.</p>
+  <h1>Discovery</h1>
+  <p>{{ total }} YouTube Shorts{% if tiktok_total %} · {{ tiktok_total }} TikTok{% endif %}{% if instagram_total %} · {{ instagram_total }} Instagram{% endif %}. <strong>POPULAR</strong> is not <strong>EMERGING</strong> is not <strong>ACCELERATING</strong>.</p>
   {% if error %}<p class="alert err">{{ error }}</p>{% endif %}
   {% if message %}<p class="alert ok">{{ message }}</p>{% endif %}
   <p>
     <a class="btn secondary" href="/discovery/opportunities">Format opportunities</a>
+    <a class="btn secondary" href="/acquisition">Data sources / Acquisition</a>
   </p>
   <form method="post" action="/discovery/analyze-high-signal" style="margin-top:0.6rem;">
     <input type="hidden" name="force_stub" value="true" />
@@ -18,7 +19,7 @@
 
 <section class="panel">
   <h2>Gathering schedule</h2>
-  <p class="muted">YouTube Data API only. Discover every {{ gathering.schedule.discover_every_minutes }} minutes · observe every {{ gathering.schedule.observe_every_minutes }} minutes · mode <code>{{ gathering.schedule.mode }}</code>. Keep <code>python scripts/run_gathering.py --loop</code> running so this actually fires; the dashboard does not run a background scheduler.</p>
+  <p class="muted">YouTube official API only. TikTok and Instagram acquisition is manual on the <a href="/acquisition">Acquisition</a> page so we can inspect quality and cost before any recurring spend.</p>
   <p>
     Discover: {% if gathering.discover.last_started_at %}{{ gathering.discover.last_started_at.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}never{% endif %}
     · {% if gathering.discover.due %}<strong>due</strong>{% else %}ok{% endif %}
@@ -28,15 +29,11 @@
   <div class="inline">
     <form method="post" action="/discovery/gather">
       <input type="hidden" name="job" value="discover" />
-      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run discover now</button>
+      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run YouTube discover</button>
     </form>
     <form method="post" action="/discovery/gather">
       <input type="hidden" name="job" value="observe" />
-      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run observe now</button>
-    </form>
-    <form method="post" action="/discovery/gather">
-      <input type="hidden" name="job" value="both" />
-      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run both now</button>
+      <button class="btn" type="submit" {% if not has_youtube %}disabled{% endif %}>Run YouTube observe</button>
     </form>
   </div>
 </section>
@@ -107,8 +104,16 @@
 </section>
 {% endmacro %}
 
-{{ cand_table('Emerging', 'Recently published with strong views/hour.', emerging) }}
-{{ cand_table('Accelerating', 'View velocity increasing across observation windows.', accelerating) }}
-{{ cand_table('Popular (not necessarily emerging)', 'High views and older. Often a large channel, not a new format.', popular) }}
-{{ cand_table('Top opportunities (promoted)', 'Passed discovery threshold and entered the existing analysis pipeline.', promoted) }}
+{{ cand_table('YouTube emerging', 'Recently published with strong views/hour.', emerging) }}
+{{ cand_table('YouTube accelerating', 'View velocity increasing across observation windows.', accelerating) }}
+{{ cand_table('YouTube popular (not necessarily emerging)', 'High views and older. Often a large channel, not a new format.', popular) }}
+{{ cand_table('YouTube top opportunities (promoted)', 'Passed discovery threshold and entered the existing analysis pipeline.', promoted) }}
+{{ cand_table('TikTok emerging', 'From Acquisition (Apify). Same labels as YouTube.', tiktok_emerging) }}
+{{ cand_table('TikTok accelerating', 'Needs at least three observations.', tiktok_accelerating) }}
+{{ cand_table('TikTok popular', 'High plays and older.', tiktok_popular) }}
+{{ cand_table('TikTok promoted', 'Not auto-promoted from acquisition.', tiktok_promoted) }}
+{{ cand_table('Instagram emerging', 'From Acquisition (Apify Reels). Same labels.', instagram_emerging) }}
+{{ cand_table('Instagram accelerating', 'Needs three observations.', instagram_accelerating) }}
+{{ cand_table('Instagram popular', 'High plays and older.', instagram_popular) }}
+{{ cand_table('Instagram promoted', 'Not auto-promoted from acquisition.', instagram_promoted) }}
 {% endblock %}

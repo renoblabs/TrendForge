@@ -21,6 +21,14 @@
     <p><strong>Duration:</strong> {{ c.duration if c.duration is not none else '—' }}s {% if c.is_short %}(Short){% endif %}</p>
     <p><a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.url }}</a></p>
     <p class="muted">Queries: {{ (c.source_queries or [c.source_query])|join(', ') }}</p>
+    {% set found_q = (c.raw_metadata or {}).get('queries_that_found_candidate') or [] %}
+    {% if found_q %}
+    <p class="muted">Found by queries: {{ found_q|join(', ') }}</p>
+    {% endif %}
+    {% set found_p = (c.raw_metadata or {}).get('profiles_that_found_candidate') or c.acquisition_profiles or [] %}
+    {% if found_p %}
+    <p class="muted">Found by profiles: {{ found_p|join(', ') }}</p>
+    {% endif %}
   </section>
 
   <section class="panel">
@@ -43,7 +51,21 @@
     <p>Creator baseline {{ '%.0f'|format(c.creator_baseline) if c.creator_baseline is not none else 'null (not enough channel history)' }}
       {% if c.creator_baseline_estimated %} <span class="muted">(estimated)</span>{% endif %}
     </p>
-    <p>Creator lift {{ '%.2f'|format(c.creator_lift) if c.creator_lift is not none else 'null' }}{% if c.creator_lift is not none %}x{% endif %}</p>
+    <p>Creator lift {{ '%.2f'|format(c.creator_lift) if c.creator_lift is not none else 'null' }}{% if c.creator_lift is not none %}x{% endif %}
+      <span class="muted">(discovery-signal field; weights unchanged)</span>
+    </p>
+    {% set hist = (c.raw_metadata or {}).get('creator_history') or {} %}
+    {% if hist %}
+    <h3>Creator baseline (measurement)</h3>
+    <p class="muted">{{ hist.definition }}</p>
+    <p>Creator: {{ hist.creator_name or c.channel_name or c.creator or '—' }}</p>
+    <p>Baseline: {% if hist.creator_baseline_views is not none %}{{ '%.0f'|format(hist.creator_baseline_views) }} views{% else %}null (insufficient history){% endif %}</p>
+    <p>Current: {{ c.views if c.views is not none else '—' }} views</p>
+    {% if hist.creator_lift is not none %}
+    <p>Creator lift: {{ '%.2f'|format(hist.creator_lift) }}×</p>
+    {% endif %}
+    <p>Baseline sample: {{ hist.baseline_sample_size if hist.baseline_sample_size is not none else 0 }} items</p>
+    {% endif %}
   </section>
 
   <section class="panel">

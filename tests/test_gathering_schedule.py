@@ -27,8 +27,8 @@ def db(tmp_path):
 
 def test_schedule_defaults():
     sched = schedule_config({})
-    assert sched["discover_every_minutes"] == 360
-    assert sched["observe_every_minutes"] == 90
+    assert sched["discover_every_minutes"] == 1440
+    assert sched["observe_every_minutes"] == 1440
     assert sched["enabled"] is True
 
 

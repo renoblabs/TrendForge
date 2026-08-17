@@ -26,6 +26,7 @@ class DiscoveredVideo:
     views: Optional[int] = None
     likes: Optional[int] = None
     comments: Optional[int] = None
+    shares: Optional[int] = None
     favorite_count: Optional[int] = None
     thumbnail_url: Optional[str] = None
     hashtags: list[str] = field(default_factory=list)
@@ -34,6 +35,7 @@ class DiscoveredVideo:
     is_short: bool = False
     source_query: Optional[str] = None
     search_rank: Optional[int] = None
+    platform: str = "youtube"
     raw: dict[str, Any] = field(default_factory=dict)
 
 

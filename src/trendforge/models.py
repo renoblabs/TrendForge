@@ -135,6 +135,9 @@ class ContentCandidate(Base):
     promoted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     analysis_history: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
     data_origin: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    acquisition_run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    acquisition_provider: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    acquisition_profiles: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
 
     format: Mapped[Optional["Format"]] = relationship(back_populates="candidates")
     observations: Mapped[list["CandidateObservation"]] = relationship(
@@ -320,6 +323,32 @@ class DiscoveryRun(Base):
     observations_written: Mapped[int] = mapped_column(Integer, default=0)
     api_errors: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class AcquisitionRun(Base):
+    """One controlled acquisition pass (Apify Actor, later other providers)."""
+
+    __tablename__ = "acquisition_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="apify")
+    actor_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    profile: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    items_found: Mapped[int] = mapped_column(Integer, default=0)
+    items_new: Mapped[int] = mapped_column(Integer, default=0)
+    items_duplicate: Mapped[int] = mapped_column(Integer, default=0)
+    items_rejected: Mapped[int] = mapped_column(Integer, default=0)
+    errors: Mapped[Optional[list[Any]]] = mapped_column(JSON, nullable=True)
+    run_metadata_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    apify_run_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    apify_dataset_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    estimated_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    actual_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    currency: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
 
 
 class FormatBrainstormSet(Base):

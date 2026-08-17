@@ -60,6 +60,8 @@ def test_classify_language_keep_reject_unknown():
     assert classify_language({"defaultLanguage": None, "defaultAudioLanguage": None}) == "unknown"
     assert classify_language({"defaultAudioLanguage": "en-US"}) == "en"
     assert classify_language({"defaultLanguage": "zxx"}) == "unknown"
+    assert classify_language({"defaultLanguage": "un"}) == "unknown"
+    assert classify_language({"defaultLanguage": "und"}) == "unknown"
     assert keep_language_candidate("en") is True
     assert keep_language_candidate("unknown") is True
     assert keep_language_candidate("non_en") is False

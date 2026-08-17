@@ -9,13 +9,14 @@ YouTube Discovery v1: find Shorts from **objective performance data**, not only 
 
 - Manual candidate ingestion (URLs / JSON)
 - YouTube Shorts discovery via the official Data API (optional `YOUTUBE_API_KEY`)
+- Optional TikTok + Instagram **Data Acquisition** via Apify (`APIFY_API_TOKEN`) — small manual samples, not scheduled crawls
 - Repeated observations, velocity, acceleration, creator-relative lift
 - Structured LLM analysis via OpenRouter (optional) or stub analyzer
 - Format-family ideation (original concept mutations; not performance evidence)
 - Production specifications from selected ideas
 - **Generation Control Plane** — dashboard Generate launches Cursor Agent CLI → native Comfy Cloud MCP (9:16 still for this slice)
 - Deterministic format scoring **and** a separate discovery score
-- Dashboards: Opportunity Queue, **Discovery**, Format Opportunities, **Generation**, Candidates, Formats, Ingest
+- Dashboards: Opportunity Queue, **Discovery**, **Acquisition**, Format Opportunities, **Generation**, Candidates, Formats, Ingest
 - Schema stubs for variations, assets, Postiz, performance
 
 ## Stack
@@ -25,6 +26,7 @@ YouTube Discovery v1: find Shorts from **objective performance data**, not only 
 - SQLite + SQLAlchemy 2
 - OpenRouter when `OPENROUTER_API_KEY` is set
 - YouTube Data API v3 when `YOUTUBE_API_KEY` is set
+- Apify when `APIFY_API_TOKEN` is set (TikTok + Instagram samples)
 
 ## Quick start
 
@@ -56,6 +58,29 @@ python scripts/analyze_high_signal.py
 4. Open http://127.0.0.1:8733/discovery (use a non-8000 port if 8000 is taken) and `/discovery/opportunities`
 
 Details: [docs/YOUTUBE_DISCOVERY.md](docs/YOUTUBE_DISCOVERY.md)
+
+### TikTok / Instagram via Apify
+
+1. Create a free Apify account (includes **$5/month** credits; Starter is **$29** prepaid usage).
+2. Copy an API token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations) into `.env` as `APIFY_API_TOKEN`.
+3. Actor IDs, profiles, queries, and Instagram creator handles live in `config/data_sources.json` (not hardcoded).
+4. Run a **profile**, not a generic hashtag firehose:
+
+```powershell
+python scripts/acquire.py --source tiktok --profile tiktok_trending --dry-run
+python scripts/acquire.py --source tiktok --profile tiktok_trending --limit 25
+python scripts/acquire.py --source tiktok --profile tiktok_fresh_search --limit 25
+python scripts/acquire.py --source instagram --profile instagram_creator_reels --limit 25
+python scripts/observe.py --source tiktok --profile tiktok_fresh_search --dry-run
+```
+
+Hashtag profiles remain available as `tiktok_hashtag` / `instagram_hashtag` and are marked **deprecated_for_discovery**. Do not scale them. Recurring Apify crawls stay **off**. YouTube gathering is unchanged (`scripts/run_gathering.py --loop`).
+
+TikTok fresh-search queries and Instagram creator handles live in `config/data_sources.json`. Creator lift is measurement-only (median of other same-creator items; not part of discovery_score).
+
+Compare profiles on `/acquisition`. Yields there are acquisition-quality ratios (new / persisted, recent / kept), not predictive scores.
+
+See [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 ### Generation (Comfy Cloud)
 

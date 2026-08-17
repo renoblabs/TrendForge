@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
@@ -8,9 +9,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
+from trendforge.acquisition.errors import AcquisitionError, MissingTokenError
+from trendforge.acquisition.sampling import compare_profile_rows
+from trendforge.acquisition.service import run_acquisition
 from trendforge.analysis.client import MissingAPIKeyError
 from trendforge.analysis.opportunities import aggregate_format_opportunities
-from trendforge.config import get_settings, load_generation_config
+from trendforge.config import get_settings, load_data_sources_config, load_generation_config
 from trendforge.db import get_db, get_session_factory, init_db
 from trendforge.discovery.gather import run_gathering_jobs
 from trendforge.discovery.pipeline import promote_top_candidates
@@ -34,6 +38,7 @@ from trendforge.generation.service import (
     list_generation_options,
 )
 from trendforge.models import (
+    AcquisitionRun,
     AnalysisStatus,
     ContentAsset,
     ContentCandidate,
@@ -85,6 +90,7 @@ def _nav_context(request: Request) -> dict:
         "request": request,
         "has_openrouter": settings.has_openrouter,
         "has_youtube": settings.has_youtube,
+        "has_apify": settings.has_apify,
         "app_name": "TrendForge",
     }
 
@@ -223,12 +229,24 @@ def set_format_status(
     return RedirectResponse(url=f"/formats/{format_id}", status_code=303)
 
 
-def _youtube_candidates(db: Session):
+def _platform_candidates(db: Session, platform: str):
     return (
         db.query(ContentCandidate)
-        .filter(ContentCandidate.platform == "youtube")
+        .filter(ContentCandidate.platform == platform)
         .order_by(ContentCandidate.discovery_score.desc(), ContentCandidate.id.asc())
     )
+
+
+def _labeled_groups(rows):
+    def has_label(row: ContentCandidate, label: str) -> bool:
+        return label in (row.discovery_labels or [])
+
+    return {
+        "emerging": [r for r in rows if has_label(r, "EMERGING")][:25],
+        "accelerating": [r for r in rows if has_label(r, "ACCELERATING")][:25],
+        "popular": [r for r in rows if has_label(r, "POPULAR")][:15],
+        "promoted": [r for r in rows if r.promoted_at is not None][:25],
+    }
 
 
 @app.get("/discovery", response_class=HTMLResponse)
@@ -238,19 +256,16 @@ def discovery_home(
     message: str | None = None,
     error: str | None = None,
 ):
-    rows = _youtube_candidates(db).all()
-
-    def has_label(row: ContentCandidate, label: str) -> bool:
-        return label in (row.discovery_labels or [])
-
-    emerging = [r for r in rows if has_label(r, "EMERGING")][:25]
-    accelerating = [r for r in rows if has_label(r, "ACCELERATING")][:25]
-    popular = [r for r in rows if has_label(r, "POPULAR")][:15]
-    promoted = [r for r in rows if r.promoted_at is not None][:25]
+    yt_rows = _platform_candidates(db, "youtube").all()
+    tt_rows = _platform_candidates(db, "tiktok").all()
+    ig_rows = _platform_candidates(db, "instagram").all()
+    youtube = _labeled_groups(yt_rows)
+    tiktok = _labeled_groups(tt_rows)
+    instagram = _labeled_groups(ig_rows)
     runs = (
         db.query(DiscoveryRun)
         .order_by(DiscoveryRun.started_at.desc())
-        .limit(8)
+        .limit(12)
         .all()
     )
     return templates.TemplateResponse(
@@ -258,12 +273,22 @@ def discovery_home(
         {
             **_nav_context(request),
             "page": "discovery",
-            "emerging": emerging,
-            "accelerating": accelerating,
-            "popular": popular,
-            "promoted": promoted,
+            "emerging": youtube["emerging"],
+            "accelerating": youtube["accelerating"],
+            "popular": youtube["popular"],
+            "promoted": youtube["promoted"],
+            "tiktok_emerging": tiktok["emerging"],
+            "tiktok_accelerating": tiktok["accelerating"],
+            "tiktok_popular": tiktok["popular"],
+            "tiktok_promoted": tiktok["promoted"],
+            "instagram_emerging": instagram["emerging"],
+            "instagram_accelerating": instagram["accelerating"],
+            "instagram_popular": instagram["popular"],
+            "instagram_promoted": instagram["promoted"],
             "runs": runs,
-            "total": len(rows),
+            "total": len(yt_rows),
+            "tiktok_total": len(tt_rows),
+            "instagram_total": len(ig_rows),
             "gathering": gathering_status(db),
             "message": message,
             "error": error,
@@ -280,6 +305,12 @@ def discovery_gather(
         "discover": ["discover"],
         "observe": ["observe"],
         "both": ["discover", "observe"],
+        "discover_tiktok": ["discover_tiktok"],
+        "observe_tiktok": ["observe_tiktok"],
+        "tiktok": ["discover_tiktok", "observe_tiktok"],
+        "discover_instagram": ["discover_instagram"],
+        "observe_instagram": ["observe_instagram"],
+        "instagram": ["discover_instagram", "observe_instagram"],
     }
     selected = mapping.get(job)
     if not selected:
@@ -290,6 +321,124 @@ def discovery_gather(
         return RedirectResponse(url=f"/discovery?error={exc}", status_code=303)
     names = "+".join(name for name, _ in ran) or "none"
     return RedirectResponse(url=f"/discovery?message=ran+{names}", status_code=303)
+
+
+def _source_actor(cfg: dict, source: str) -> str | None:
+    sources = cfg.get("sources") if isinstance(cfg.get("sources"), dict) else {}
+    source_cfg = sources.get(source) if isinstance(sources.get(source), dict) else {}
+    actor_key = source_cfg.get("actor_key")
+    actors = (cfg.get("apify") or {}).get("actors") if isinstance(cfg.get("apify"), dict) else {}
+    actor_id = actors.get(actor_key) if actor_key else None
+    return str(actor_id) if actor_id else None
+
+
+@app.get("/acquisition", response_class=HTMLResponse)
+def acquisition_home(
+    request: Request,
+    db: Session = Depends(get_db),
+    message: str | None = None,
+    error: str | None = None,
+):
+    cfg = load_data_sources_config()
+    sources = cfg.get("sources") if isinstance(cfg.get("sources"), dict) else {}
+    tiktok_cfg = sources.get("tiktok") if isinstance(sources.get("tiktok"), dict) else {}
+    ig_cfg = sources.get("instagram") if isinstance(sources.get("instagram"), dict) else {}
+    experiments = cfg.get("experiments") if isinstance(cfg.get("experiments"), dict) else {}
+    emerging = experiments.get("tiktok_emerging_breakout") if isinstance(experiments, dict) else {}
+    emerging_actor = None
+    actors = (cfg.get("apify") or {}).get("actors") if isinstance(cfg.get("apify"), dict) else {}
+    if isinstance(emerging, dict) and emerging.get("actor_key"):
+        emerging_actor = actors.get(emerging.get("actor_key"))
+    profiles_cfg = cfg.get("profiles") if isinstance(cfg.get("profiles"), dict) else {}
+    profile_actors = {}
+    for name, row in profiles_cfg.items():
+        if not isinstance(row, dict):
+            continue
+        key = row.get("actor_key")
+        actor = actors.get(key) if key else None
+        if isinstance(actor, dict):
+            actor = actor.get("actor_id")
+        profile_actors[name] = actor
+    runs = (
+        db.query(AcquisitionRun)
+        .order_by(AcquisitionRun.started_at.desc())
+        .limit(50)
+        .all()
+    )
+    comparison = compare_profile_rows(runs)
+    return templates.TemplateResponse(
+        "acquisition.html",
+        {
+            **_nav_context(request),
+            "page": "acquisition",
+            "runs": runs[:25],
+            "tiktok_actor": _source_actor(cfg, "tiktok"),
+            "instagram_actor": _source_actor(cfg, "instagram"),
+            "tiktok_enabled": bool(tiktok_cfg.get("enabled", True)),
+            "instagram_enabled": bool(ig_cfg.get("enabled", True)),
+            "emerging_enabled": bool((emerging or {}).get("enabled")),
+            "emerging_actor": emerging_actor,
+            "emerging_queries": (emerging or {}).get("first_run_queries") or (emerging or {}).get("queries") or [],
+            "emerging_window": (emerging or {}).get("window"),
+            "emerging_regions": (emerging or {}).get("regions") or [],
+            "profiles": profiles_cfg,
+            "profile_actors": profile_actors,
+            "comparison": comparison,
+            "trending_actor": profile_actors.get("tiktok_trending"),
+            "fresh_actor": profile_actors.get("tiktok_fresh_search"),
+            "creator_reels_actor": profile_actors.get("instagram_creator_reels"),
+            "creator_list": (profiles_cfg.get("instagram_creator_reels") or {}).get("creators") or [],
+            "fresh_queries": (profiles_cfg.get("tiktok_fresh_search") or {}).get("queries") or [],
+            "message": message,
+            "error": error,
+        },
+    )
+
+
+@app.post("/acquisition/run")
+def acquisition_run_create(
+    source: str = Form(...),
+    limit: int = Form(25),
+    mode: str = Form("default"),
+    profile: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    try:
+        run = run_acquisition(
+            db,
+            source,
+            limit=limit,
+            mode=mode,
+            profile=profile.strip() or None,
+        )
+    except MissingTokenError as exc:
+        return RedirectResponse(url=f"/acquisition?error={quote(str(exc))}", status_code=303)
+    except AcquisitionError as exc:
+        return RedirectResponse(url=f"/acquisition?error={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url=f"/acquisition/runs/{run.id}", status_code=303)
+
+
+@app.get("/acquisition/runs/{run_id}", response_class=HTMLResponse)
+def acquisition_run_detail(run_id: int, request: Request, db: Session = Depends(get_db)):
+    run = db.get(AcquisitionRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Acquisition run not found")
+    candidates = (
+        db.query(ContentCandidate)
+        .filter(ContentCandidate.acquisition_run_id == run.id)
+        .order_by(ContentCandidate.views.desc(), ContentCandidate.id.asc())
+        .limit(40)
+        .all()
+    )
+    return templates.TemplateResponse(
+        "acquisition_run.html",
+        {
+            **_nav_context(request),
+            "page": "acquisition",
+            "run": run,
+            "candidates": candidates,
+        },
+    )
 
 
 @app.get("/discovery/opportunities", response_class=HTMLResponse)
@@ -727,6 +876,7 @@ def health():
         "ok": True,
         "has_openrouter": settings.has_openrouter,
         "has_youtube": settings.has_youtube,
+        "has_apify": settings.has_apify,
         "db": str(settings.db_path),
     }
 

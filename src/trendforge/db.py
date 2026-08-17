@@ -38,6 +38,7 @@ def init_db(db_path: Path | None = None) -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_candidate_columns(engine)
     _ensure_asset_columns(engine)
+    _ensure_acquisition_run_columns(engine)
     if db_path is None:
         global _SessionLocal
         _SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -70,6 +71,9 @@ def _ensure_candidate_columns(engine) -> None:
         "promoted_at": "DATETIME",
         "analysis_history": "JSON",
         "data_origin": "VARCHAR(16)",
+        "acquisition_run_id": "INTEGER",
+        "acquisition_provider": "VARCHAR(32)",
+        "acquisition_profiles": "JSON",
     }
     with engine.begin() as conn:
         rows = conn.exec_driver_sql("PRAGMA table_info(content_candidates)").fetchall()
@@ -81,6 +85,18 @@ def _ensure_candidate_columns(engine) -> None:
                 conn.exec_driver_sql(
                     f"ALTER TABLE content_candidates ADD COLUMN {name} {ddl}"
                 )
+
+
+def _ensure_acquisition_run_columns(engine) -> None:
+    new_columns = {"profile": "VARCHAR(64)"}
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(acquisition_runs)").fetchall()
+        if not rows:
+            return
+        existing = {row[1] for row in rows}
+        for name, ddl in new_columns.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE acquisition_runs ADD COLUMN {name} {ddl}")
 
 
 def _ensure_asset_columns(engine) -> None:

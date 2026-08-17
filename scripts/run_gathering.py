@@ -19,7 +19,7 @@ from trendforge.discovery.schedule import gathering_status, schedule_config
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run YouTube discover + observe on the intervals in config/discovery.json"
+        description="Run YouTube / TikTok / Instagram gather jobs on config/discovery.json intervals"
     )
     parser.add_argument(
         "--loop",
@@ -38,7 +38,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--job",
-        choices=("discover", "observe", "both"),
+        choices=(
+            "discover",
+            "observe",
+            "both",
+            "tiktok",
+            "discover_tiktok",
+            "observe_tiktok",
+            "instagram",
+            "discover_instagram",
+            "observe_instagram",
+        ),
         default=None,
         help="Run a specific job now (implies --force for that job)",
     )
@@ -53,8 +63,17 @@ def _print_status(status: dict) -> None:
         f"observe_every={sched['observe_every_minutes']}m "
         f"mode={sched['mode']}"
     )
-    for name in ("discover", "observe"):
-        job = status[name]
+    for name in (
+        "discover",
+        "observe",
+        "discover_tiktok",
+        "observe_tiktok",
+        "discover_instagram",
+        "observe_instagram",
+    ):
+        job = status.get(name)
+        if not job:
+            continue
         last = job["last_started_at"].isoformat() if job["last_started_at"] else "never"
         print(f"  {name}: last={last} due={job['due']}")
 
@@ -81,6 +100,12 @@ def main(argv: list[str] | None = None) -> int:
     force = bool(args.force)
     if args.job == "both":
         jobs = ["discover", "observe"]
+        force = True
+    elif args.job == "tiktok":
+        jobs = ["discover_tiktok", "observe_tiktok"]
+        force = True
+    elif args.job == "instagram":
+        jobs = ["discover_instagram", "observe_instagram"]
         force = True
     elif args.job:
         jobs = [args.job]

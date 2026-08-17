@@ -23,8 +23,8 @@
   "observe_top_n": 80,
   "schedule": {
     "enabled": true,
-    "discover_every_minutes": 360,
-    "observe_every_minutes": 90,
+    "discover_every_minutes": 1440,
+    "observe_every_minutes": 1440,
     "mode": "topics",
     "promote": true,
     "live_analysis": false,
@@ -60,5 +60,35 @@
     "emerging_min_discovery_score": 20,
     "max_analyze_per_run": 10,
     "prompt_version": "format-intelligence-v1.1"
+  },
+  "apify": {
+    "enabled": false,
+    "tiktok": {
+      "actor_id": "clockworks~tiktok-scraper",
+      "hashtags": ["pov", "comedy", "storytime"],
+      "results_per_hashtag": 8,
+      "observe_top_n": 20,
+      "max_short_seconds": 60,
+      "max_charge_usd": 0.5,
+      "timeout_secs": 180,
+      "discover_every_minutes": 1440,
+      "observe_every_minutes": 1440,
+      "keep_english_only": false,
+      "promote": false
+    },
+    "instagram": {
+      "enabled": true,
+      "discover_actor_id": "apify~instagram-hashtag-scraper",
+      "observe_actor_id": "apify~instagram-scraper",
+      "hashtags": ["pov", "comedy", "reels"],
+      "results_per_hashtag": 8,
+      "observe_top_n": 20,
+      "max_short_seconds": 60,
+      "max_charge_usd": 0.5,
+      "timeout_secs": 180,
+      "discover_every_minutes": 1440,
+      "observe_every_minutes": 1440,
+      "promote": false
+    }
   }
 }

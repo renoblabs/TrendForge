@@ -1,0 +1,296 @@
+{
+  "apify": {
+    "enabled": true,
+    "api_token_env": "APIFY_API_TOKEN",
+    "actors": {
+      "tiktok": {
+        "trending": {
+          "actor_id": "xtracto/tiktok-trending-scraper",
+          "enabled": true
+        },
+        "fresh_search": {
+          "actor_id": "clockworks/tiktok-scraper",
+          "enabled": true
+        },
+        "hashtag": {
+          "actor_id": "clockworks/tiktok-scraper",
+          "enabled": true,
+          "status": "deprecated_for_discovery"
+        },
+        "emerging": {
+          "actor_id": "coregent/tiktok-keyword-search-scraper",
+          "enabled": true,
+          "status": "experimental"
+        },
+        "discover": {
+          "actor_id": "clockworks/tiktok-explore-scraper",
+          "enabled": false,
+          "status": "deferred",
+          "notes": "Explore categories; region uses residential proxyCountryCode. Deferred because tiktok_trending already covers ranked Explore videos with country_code=US and no residential proxy."
+        }
+      },
+      "instagram": {
+        "creator_reels": {
+          "actor_id": "instagram-scraper/instagram-profile-reels-scraper",
+          "enabled": true
+        },
+        "hashtag": {
+          "actor_id": "apify/instagram-hashtag-scraper",
+          "enabled": true,
+          "status": "deprecated_for_discovery"
+        }
+      },
+      "tiktok_discovery": "clockworks/tiktok-scraper",
+      "tiktok_emerging": "coregent/tiktok-keyword-search-scraper",
+      "tiktok_trending": "xtracto/tiktok-trending-scraper",
+      "tiktok_fresh_search": "clockworks/tiktok-scraper",
+      "instagram_reels": "apify/instagram-hashtag-scraper",
+      "instagram_creator_reels": "instagram-scraper/instagram-profile-reels-scraper",
+      "youtube_shorts": null
+    }
+  },
+  "profiles": {
+    "tiktok_trending": {
+      "source": "tiktok",
+      "role": "trending",
+      "actor_key": "tiktok_trending",
+      "enabled": true,
+      "status": "experimental",
+      "label": "TikTok Trending",
+      "rationale": "xtracto/tiktok-trending-scraper Explore-ranked videos with country_code. Not a hashtag search. Actor schema: period and sort_by are ignored for content_type=video. country_code biases ranking; it is not a hard geo fence. Live v1 (2026-08-16): 0% recent, median age ~27d, median 564k views, global language mix. Do not scale as an emerging feed.",
+      "default_limit": 25,
+      "max_limit": 50,
+      "timeout_secs": 300,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 60,
+      "limit_input_keys": [],
+      "total_limit_key": "limit",
+      "actor_input": {
+        "content_type": "video",
+        "country_code": "US",
+        "limit": 25
+      }
+    },
+    "tiktok_fresh_search": {
+      "source": "tiktok",
+      "role": "fresh_search",
+      "actor_key": "tiktok_fresh_search",
+      "enabled": true,
+      "status": "experimental",
+      "label": "TikTok Fresh Search",
+      "rationale": "clockworks/tiktok-scraper keyword search with searchSection=/video, videoSearchSorting=LATEST, videoSearchDateFilter=PAST_24_HOURS. LATEST and PAST_24_HOURS are charged Actor filters. Distinct from hashtag-popular sampling. Query mix v1.1: story removed (too many long videos); animal added as a short-form-oriented replacement; funny added. Do not add dozens of queries.",
+      "queries": ["AI", "comedy", "funny", "POV", "character", "transformation", "animal"],
+      "window": "PAST_24_HOURS",
+      "default_limit": 25,
+      "max_limit": 50,
+      "timeout_secs": 420,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 60,
+      "limit_input_keys": ["resultsPerPage"],
+      "actor_input": {
+        "searchQueries": ["AI", "comedy", "funny", "POV", "character", "transformation", "animal"],
+        "searchSection": "/video",
+        "videoSearchSorting": "LATEST",
+        "videoSearchDateFilter": "PAST_24_HOURS",
+        "resultsPerPage": 25,
+        "excludePinnedPosts": false,
+        "scrapeRelatedVideos": false,
+        "shouldDownloadAvatars": false,
+        "shouldDownloadCovers": false,
+        "shouldDownloadMusicCovers": false,
+        "shouldDownloadSlideshowImages": false,
+        "shouldDownloadSubtitles": false,
+        "shouldDownloadVideos": false,
+        "commentsPerPost": 0,
+        "topLevelCommentsPerPost": 0,
+        "maxRepliesPerComment": 0,
+        "maxFollowersPerProfile": 0,
+        "maxFollowingPerProfile": 0,
+        "proxyCountryCode": "None"
+      }
+    },
+    "tiktok_hashtag": {
+      "source": "tiktok",
+      "role": "hashtag",
+      "actor_key": "tiktok_discovery",
+      "enabled": true,
+      "status": "deprecated_for_discovery",
+      "label": "TikTok Hashtag",
+      "rationale": "Hashtag-popular feed. Live evidence: 4% recent, 0% new, already-viral clips. Kept for comparison only. Do not scale."
+    },
+    "tiktok_emerging": {
+      "source": "tiktok",
+      "role": "emerging",
+      "actor_key": "tiktok_emerging",
+      "enabled": true,
+      "status": "experimental",
+      "label": "TikTok Emerging (coregent)",
+      "rationale": "Previous keyword-search experiment. Recency worked; short-form yield did not. Not the primary fresh-search profile.",
+      "first_run_queries": ["POV", "skit", "comedy", "plot twist", "reaction"],
+      "window": "24h",
+      "regions": ["US", "CA"],
+      "default_limit": 40,
+      "max_limit": 75,
+      "timeout_secs": 300,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 60,
+      "limit_input_keys": ["maxItemsPerKeyword"],
+      "total_limit_key": "maxTotalResults",
+      "actor_input": {
+        "searchType": "video",
+        "sort": "latest",
+        "region": "US",
+        "datePosted": "last24Hours",
+        "deduplicateAcrossKeywords": true
+      }
+    },
+    "instagram_creator_reels": {
+      "source": "instagram",
+      "role": "creator_reels",
+      "actor_key": "instagram_creator_reels",
+      "enabled": true,
+      "status": "experimental",
+      "label": "Instagram Creator Reels",
+      "rationale": "Profile Reels tab sampling for creator-relative baselines, not trend discovery. postsPerProfile minimum on this Actor is 5. Handles live in this list only. Live v1: dudeperfect and mkbhd returned Reels; saturdaynightlive returned 0 and was removed. Starter list is a small public English/NA mix for baseline mechanics, not creator discovery.",
+      "creators": ["dudeperfect", "mkbhd", "ijustine", "thetryguys", "yestheory"],
+      "creator_input_key": "instagramUsernames",
+      "default_limit": 25,
+      "max_limit": 50,
+      "timeout_secs": 300,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 90,
+      "limit_input_keys": ["postsPerProfile"],
+      "min_per_query": 5,
+      "actor_input": {
+        "postsPerProfile": 12
+      }
+    },
+    "instagram_hashtag": {
+      "source": "instagram",
+      "role": "hashtag",
+      "actor_key": "instagram_reels",
+      "enabled": true,
+      "status": "deprecated_for_discovery",
+      "label": "Instagram Hashtag",
+      "rationale": "Global hashtag firehose. Live evidence: 0% English field, 0% NA signal. Kept for comparison only. Do not scale."
+    }
+  },
+  "experiments": {
+    "tiktok_emerging_breakout": {
+      "enabled": true,
+      "actor_key": "tiktok_emerging",
+      "previous_actor": "clockworks/tiktok-scraper",
+      "rationale": "Keyword search with sort=latest, datePosted=last24Hours, and region=US. clockworks/tiktok-scraper hashtag feeds returned already-viral English clips. paul_44/tiktok-search is cheaper but only filters calendar 'today' (not last 24h) and has a min-duration filter rather than shorts. automation-lab/tiktok-search-scraper has no recency/region sort. Actor region is a single code; US is the sampling bias, not creator nationality.",
+      "window": "24h",
+      "regions": ["US", "CA"],
+      "queries": [
+        "POV",
+        "skit",
+        "comedy",
+        "storytime",
+        "plot twist",
+        "transformation",
+        "reaction",
+        "unexpected",
+        "day in my life"
+      ],
+      "first_run_queries": ["POV", "skit", "comedy", "plot twist", "reaction"],
+      "live_v1": {
+        "recommendation": "ITERATE",
+        "apify_run_id": "g4ALYW7Jq8nfXMgxh",
+        "dataset_id": "2f1ejwaCsh2fCROnZ",
+        "date": "2026-08-16",
+        "queries_used": ["POV", "skit", "comedy", "storytime", "plot twist"],
+        "raw": 13,
+        "new": 4,
+        "duplicates": 0,
+        "rejected": 9,
+        "reject_reasons": {"rejected_not_short": 9},
+        "cost_usd": 0.026,
+        "sampling_quality": {
+          "recent_rate": 1.0,
+          "short_rate": 0.3077,
+          "english_rate": 0.0,
+          "unknown_language_rate": 1.0,
+          "north_america_signal_rate": 1.0,
+          "new_candidate_rate": 0.3077,
+          "duplicate_rate": 0.0
+        },
+        "notes": "datePosted=last24Hours worked (median age ~4h). Actor has no max-duration input; storytime returned only 2–3 minute videos. skit and plot twist returned 0. Actor echoes region=US and does not emit textLanguage. Do not scale volume yet. Next cheap run should drop storytime."
+      },
+      "default_limit": 40,
+      "max_limit": 75,
+      "timeout_secs": 300,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 60,
+      "limit_input_keys": ["maxItemsPerKeyword"],
+      "total_limit_key": "maxTotalResults",
+      "actor_input": {
+        "searchType": "video",
+        "sort": "latest",
+        "region": "US",
+        "datePosted": "last24Hours",
+        "deduplicateAcrossKeywords": true
+      }
+    }
+  },
+  "sources": {
+    "youtube": {
+      "enabled": true,
+      "provider": "youtube_api",
+      "notes": "Official YouTube Data API remains the baseline. Do not use Apify for YouTube in this phase."
+    },
+    "tiktok": {
+      "enabled": true,
+      "provider": "apify",
+      "actor_key": "tiktok_discovery",
+      "default_limit": 25,
+      "max_limit": 100,
+      "timeout_secs": 180,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 60,
+      "limit_input_keys": ["resultsPerPage"],
+      "actor_input": {
+        "hashtags": ["pov", "comedy", "storytime"],
+        "resultsPerPage": 25,
+        "excludePinnedPosts": false,
+        "scrapeRelatedVideos": false,
+        "shouldDownloadAvatars": false,
+        "shouldDownloadCovers": false,
+        "shouldDownloadMusicCovers": false,
+        "shouldDownloadSlideshowImages": false,
+        "shouldDownloadSubtitles": false,
+        "shouldDownloadVideos": false,
+        "commentsPerPost": 0,
+        "topLevelCommentsPerPost": 0,
+        "maxRepliesPerComment": 0,
+        "maxFollowersPerProfile": 0,
+        "maxFollowingPerProfile": 0,
+        "proxyCountryCode": "None"
+      }
+    },
+    "instagram": {
+      "enabled": true,
+      "provider": "apify",
+      "actor_key": "instagram_reels",
+      "default_limit": 25,
+      "max_limit": 100,
+      "timeout_secs": 180,
+      "max_charge_usd": 0.5,
+      "max_short_seconds": 60,
+      "limit_input_keys": ["resultsLimit"],
+      "notes": "Hashtag Reels sample was a noisy global firehose with no language/follower fields. Do not scale. Use instagram_creator_reels for creator-relative sampling.",
+      "actor_input": {
+        "hashtags": ["pov", "comedy", "reels"],
+        "resultsType": "reels",
+        "resultsLimit": 25
+      }
+    }
+  },
+  "audience": {
+    "profile": "north_america_english",
+    "language": "en",
+    "regions": ["US", "CA"],
+    "keep_unknown_language": true
+  }
+}

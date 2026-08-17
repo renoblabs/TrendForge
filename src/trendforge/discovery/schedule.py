@@ -10,17 +10,28 @@ from trendforge.models import DiscoveryRun, utcnow
 
 DISCOVER_KINDS = ("discover", "discover_broad")
 OBSERVE_KINDS = ("observe",)
+TIKTOK_DISCOVER_KINDS = ("discover_tiktok",)
+TIKTOK_OBSERVE_KINDS = ("observe_tiktok",)
+INSTAGRAM_DISCOVER_KINDS = ("discover_instagram",)
+INSTAGRAM_OBSERVE_KINDS = ("observe_instagram",)
 
 DEFAULT_SCHEDULE = {
     "enabled": True,
-    "discover_every_minutes": 360,
-    "observe_every_minutes": 90,
+    "discover_every_minutes": 1440,
+    "observe_every_minutes": 1440,
     "mode": "topics",
     "promote": True,
     "live_analysis": False,
     "limit": None,
     "check_every_seconds": 60,
 }
+
+APIFY_JOB_NAMES = (
+    "discover_tiktok",
+    "observe_tiktok",
+    "discover_instagram",
+    "observe_instagram",
+)
 
 
 def schedule_config(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -37,6 +48,24 @@ def schedule_config(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     limit = merged.get("limit")
     merged["limit"] = None if limit in (None, "", 0) else int(limit)
     merged["check_every_seconds"] = max(5, int(merged.get("check_every_seconds") or 60))
+    apify = cfg.get("apify") if isinstance(cfg.get("apify"), dict) else {}
+    tiktok = apify.get("tiktok") if isinstance(apify.get("tiktok"), dict) else {}
+    instagram = apify.get("instagram") if isinstance(apify.get("instagram"), dict) else {}
+    apify_on = bool(apify.get("enabled", False))
+    merged["tiktok_enabled"] = apify_on
+    merged["tiktok_discover_every_minutes"] = max(
+        1, int(tiktok.get("discover_every_minutes") or 1440)
+    )
+    merged["tiktok_observe_every_minutes"] = max(
+        1, int(tiktok.get("observe_every_minutes") or 720)
+    )
+    merged["instagram_enabled"] = apify_on and bool(instagram.get("enabled", False))
+    merged["instagram_discover_every_minutes"] = max(
+        1, int(instagram.get("discover_every_minutes") or 1440)
+    )
+    merged["instagram_observe_every_minutes"] = max(
+        1, int(instagram.get("observe_every_minutes") or 720)
+    )
     return merged
 
 
@@ -101,23 +130,74 @@ def gathering_status(
         now=now,
         enabled=sched["enabled"],
     )
+    tiktok_on = bool(sched.get("tiktok_enabled"))
+    tiktok_discover = _job_status(
+        name="discover_tiktok",
+        last=last_run(db, TIKTOK_DISCOVER_KINDS),
+        every_minutes=int(sched.get("tiktok_discover_every_minutes") or 1440),
+        now=now,
+        enabled=sched["enabled"] and tiktok_on,
+    )
+    tiktok_observe = _job_status(
+        name="observe_tiktok",
+        last=last_run(db, TIKTOK_OBSERVE_KINDS),
+        every_minutes=int(sched.get("tiktok_observe_every_minutes") or 720),
+        now=now,
+        enabled=sched["enabled"] and tiktok_on,
+    )
+    ig_on = bool(sched.get("instagram_enabled"))
+    ig_discover = _job_status(
+        name="discover_instagram",
+        last=last_run(db, INSTAGRAM_DISCOVER_KINDS),
+        every_minutes=int(sched.get("instagram_discover_every_minutes") or 1440),
+        now=now,
+        enabled=sched["enabled"] and ig_on,
+    )
+    ig_observe = _job_status(
+        name="observe_instagram",
+        last=last_run(db, INSTAGRAM_OBSERVE_KINDS),
+        every_minutes=int(sched.get("instagram_observe_every_minutes") or 720),
+        now=now,
+        enabled=sched["enabled"] and ig_on,
+    )
     return {
         "schedule": sched,
         "now": now,
         "discover": discover,
         "observe": observe,
-        "any_due": bool(sched["enabled"] and (discover["due"] or observe["due"])),
+        "discover_tiktok": tiktok_discover,
+        "observe_tiktok": tiktok_observe,
+        "discover_instagram": ig_discover,
+        "observe_instagram": ig_observe,
+        "any_due": bool(
+            sched["enabled"]
+            and (
+                discover["due"]
+                or observe["due"]
+                or tiktok_discover["due"]
+                or tiktok_observe["due"]
+                or ig_discover["due"]
+                or ig_observe["due"]
+            )
+        ),
     }
 
 
 def jobs_due(status: dict[str, Any], *, force: bool = False) -> list[str]:
+    names = ["discover", "observe", *APIFY_JOB_NAMES]
     if force:
-        return ["discover", "observe"]
+        due = ["discover", "observe"]
+        sched = status.get("schedule") or {}
+        if sched.get("tiktok_enabled"):
+            due.extend(["discover_tiktok", "observe_tiktok"])
+        if sched.get("instagram_enabled"):
+            due.extend(["discover_instagram", "observe_instagram"])
+        return due
     if not status.get("schedule", {}).get("enabled"):
         return []
-    due: list[str] = []
-    if status["discover"]["due"]:
-        due.append("discover")
-    if status["observe"]["due"]:
-        due.append("observe")
+    due = []
+    for name in names:
+        job = status.get(name) or {}
+        if job.get("due"):
+            due.append(name)
     return due

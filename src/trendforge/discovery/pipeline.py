@@ -166,28 +166,71 @@ def video_to_discovered(
 
 SAMPLING_RAW_KEYS = (
     "discovery_profile",
+    "acquisition_profile",
+    "profiles_that_found_candidate",
+    "queries_that_found_candidate",
     "language_signal",
     "region_signal",
     "language_evidence",
     "profile_regions",
     "region_meaning",
+    "provider",
+    "actor_id",
+    "audio",
+    "profile_url",
+    "saves",
+    "source_actor",
+    "source",
+    "audience_relevance",
+    "creator_history",
 )
+
+
+def _union_str_list(*groups: Any) -> list[str]:
+    seen: list[str] = []
+    for value in groups:
+        items: list[str] = []
+        if isinstance(value, list):
+            items = [str(x) for x in value if x]
+        elif value:
+            items = [str(value)]
+        for name in items:
+            if name not in seen:
+                seen.append(name)
+    return seen
 
 
 def merge_sampling_raw(existing: dict[str, Any] | None, incoming: dict[str, Any]) -> dict[str, Any]:
     merged = dict(incoming or {})
     prev = existing or {}
+    skip = {"profiles_that_found_candidate", "queries_that_found_candidate"}
     for key in SAMPLING_RAW_KEYS:
+        if key in skip:
+            continue
         if merged.get(key) in (None, [], {}) and prev.get(key) not in (None, [], {}):
             merged[key] = prev[key]
+    profiles = _union_str_list(
+        prev.get("profiles_that_found_candidate"),
+        merged.get("profiles_that_found_candidate"),
+    )
+    if profiles:
+        merged["profiles_that_found_candidate"] = profiles
+    queries = _union_str_list(
+        prev.get("queries_that_found_candidate"),
+        merged.get("queries_that_found_candidate"),
+    )
+    if queries:
+        merged["queries_that_found_candidate"] = queries
     return merged
 
 
-def find_candidate(db: Session, *, external_id: str, url: str) -> ContentCandidate | None:
+def find_candidate(
+    db: Session, *, external_id: str, url: str, platform: str = "youtube"
+) -> ContentCandidate | None:
     row = (
         db.query(ContentCandidate)
         .filter(
-            ContentCandidate.platform == "youtube",
+            ContentCandidate.platform == platform,
             ContentCandidate.external_id == external_id,
         )
         .one_or_none()
@@ -233,6 +276,8 @@ def refresh_candidate_metrics(candidate: ContentCandidate, video: DiscoveredVide
     candidate.views = video.views
     candidate.likes = video.likes
     candidate.comments = video.comments
+    if video.shares is not None:
+        candidate.shares = video.shares
     candidate.favorite_count = video.favorite_count
     candidate.channel_subscriber_count = video.channel_subscriber_count
     if video.title:
@@ -271,7 +316,7 @@ def apply_signals(db: Session, candidate: ContentCandidate, cfg: dict[str, Any] 
     others = (
         db.query(ContentCandidate.views)
         .filter(
-            ContentCandidate.platform == "youtube",
+            ContentCandidate.platform == (candidate.platform or "youtube"),
             ContentCandidate.channel_id == candidate.channel_id,
             ContentCandidate.id != candidate.id,
             ContentCandidate.channel_id.isnot(None),
@@ -309,11 +354,13 @@ def upsert_discovered_video(
     cfg: dict[str, Any] | None = None,
 ) -> tuple[ContentCandidate, bool]:
     """Return (candidate, created). Dedupes on youtube external_id / url."""
-    existing = find_candidate(db, external_id=video.external_id, url=video.url)
+    existing = find_candidate(
+        db, external_id=video.external_id, url=video.url, platform=video.platform or "youtube"
+    )
     created = existing is None
     if existing is None:
         existing = ContentCandidate(
-            platform="youtube",
+            platform=video.platform or "youtube",
             url=video.url,
             external_id=video.external_id,
             analysis_status=AnalysisStatus.SKIPPED,

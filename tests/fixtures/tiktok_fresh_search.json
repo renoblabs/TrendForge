@@ -1,0 +1,30 @@
+[
+  {
+    "id": "fresh1",
+    "webVideoUrl": "https://www.tiktok.com/@freshacct/video/fresh1",
+    "text": "comedy POV today",
+    "createTimeISO": "REPLACE_RECENT",
+    "playCount": 640,
+    "diggCount": 80,
+    "commentCount": 3,
+    "shareCount": 1,
+    "collectCount": 4,
+    "textLanguage": "en",
+    "authorMeta": {"id": "u-fresh", "name": "freshacct", "fans": 2100, "profileUrl": "https://www.tiktok.com/@freshacct"},
+    "videoMeta": {"duration": 11, "coverUrl": "https://example.com/f.jpg"},
+    "musicMeta": {"musicName": "original sound"},
+    "hashtags": [{"name": "comedy"}],
+    "searchQuery": "comedy"
+  },
+  {
+    "id": "fresh-old",
+    "webVideoUrl": "https://www.tiktok.com/@old/video/fresh-old",
+    "text": "stale",
+    "createTimeISO": "2024-02-01T00:00:00.000Z",
+    "playCount": 20000000,
+    "textLanguage": "en",
+    "authorMeta": {"name": "old", "fans": 9000000},
+    "videoMeta": {"duration": 8},
+    "searchQuery": "POV"
+  }
+]

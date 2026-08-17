@@ -6,7 +6,8 @@ from typing import Any
 from trendforge.discovery.provider import DiscoveryError
 
 ENGLISH_ALIASES = {"en", "eng", "english"}
-NON_LANGUAGE_CODES = {"zxx", "und"}
+# TikTok emits "un"; BCP-47 uses "und". Both mean unspecified, not non-English.
+NON_LANGUAGE_CODES = {"zxx", "und", "un"}
 
 
 @dataclass(frozen=True)
