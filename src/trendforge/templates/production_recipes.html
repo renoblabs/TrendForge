@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Production Recipes — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Production Recipes</h1>
+  <p class="muted">Quality-first, shot-by-shot production state. This area plans attempts and records approvals; it does not launch Comfy Cloud.</p>
+  <p>Benchmark status: <strong>{{ benchmark_status }}</strong> · <a href="/production/benchmarks">Review eligible ProductionSpecs</a></p>
+  {% if error %}<p class="alert err">{{ error }}</p>{% endif %}
+  {% if message %}<p class="alert ok">{{ message }}</p>{% endif %}
+</section>
+
+<section class="panel">
+  {% if rows %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Recipe</th><th>Format family</th><th>Version</th><th>Status</th><th>Stage / gate</th><th>Shots</th><th>Approved motion</th><th>Actual cost</th><th>Updated</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><a href="/production/recipes/{{ row.recipe.id }}">{{ row.recipe.name }}</a></td>
+          <td><code>{{ row.recipe.format_family }}</code></td>
+          <td>v{{ row.version.version_number }} · {{ row.version.status.value }}</td>
+          <td>{{ row.recipe.status.value }}</td>
+          <td>{{ row.stage }}<br><span class="muted">{{ row.gate or 'No pending gate' }}</span></td>
+          <td>{{ row.shot_count }}</td>
+          <td>{{ row.approved_shots }}/{{ row.shot_count }}</td>
+          <td>
+            {% if row.costs.total_cost is not none %}{{ row.costs.total_cost }} {{ row.costs.currency or '' }}
+            {% elif row.costs.known_cost_total is not none %}{{ row.costs.known_cost_total }} known + {{ row.costs.cost_unknown_attempts }} unknown
+            {% else %}Unknown{% endif %}
+          </td>
+          <td>{{ row.recipe.updated_at }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <h2>No production recipes yet</h2>
+    <p>No recipe exists. A user must explicitly select a quality benchmark from the shortlist before its first recipe is created. Existing one-shot Generation jobs remain available under Generation.</p>
+  {% endif %}
+</section>
+{% endblock %}

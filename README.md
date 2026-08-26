@@ -14,9 +14,10 @@ YouTube Discovery v1: find Shorts from **objective performance data**, not only 
 - Structured LLM analysis via OpenRouter (optional) or stub analyzer
 - Format-family ideation (original concept mutations; not performance evidence)
 - Production specifications from selected ideas
-- **Generation Control Plane** — dashboard Generate launches Cursor Agent CLI → native Comfy Cloud MCP (9:16 still for this slice)
+- **Legacy Generation Control Plane** — dashboard Generate launches Cursor Agent CLI → native Comfy Cloud MCP for the existing one-shot path
+- **Quality-first Production Recipes** — immutable ProductionSpec snapshots, ordered shots, independent attempts, asset lineage, manual approval gates, and exportable agent handoffs
 - Deterministic format scoring **and** a separate discovery score
-- Dashboards: Opportunity Queue, **Discovery**, **Acquisition**, Format Opportunities, **Generation**, Candidates, Formats, Ingest
+- Dashboards: Opportunity Queue, **Discovery**, **Acquisition**, **Experiments**, Format Opportunities, **Generation**, **Production**, Candidates, Formats, Ingest
 - Schema stubs for variations, assets, Postiz, performance
 
 ## Stack
@@ -84,12 +85,27 @@ See [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 ### Generation (Comfy Cloud)
 
+The existing `/generation` route remains the legacy one-shot control-plane path. It is preserved for historical jobs and plumbing checks, but it is not the quality benchmark workflow.
+
 1. Authenticate native Cursor `comfy-cloud` MCP (`https://cloud.comfy.org/mcp`). Local ComfyUI is not used. Install Cursor Agent CLI (`agent`) so Generate can launch it.
 2. Create ideas on Format Opportunities
 3. Open `/generation`, click **Generate** (creates a job and starts Cursor Agent CLI)
 4. The agent executes the job via Comfy Cloud MCP; TrendForge applies `result.json` when the process exits
 
 Details: [docs/GENERATION.md](docs/GENERATION.md)
+
+### Quality-first production recipes
+
+Open a ProductionSpec and choose **Create Production Recipe**, or run:
+
+```powershell
+python scripts/production_recipes.py select-benchmark --production-spec-id <ID> --selected-by <USER> --reason <REASON>
+python scripts/production_recipes.py export --recipe-id <ID> --output-dir data/generation_jobs/recipe-export
+```
+
+The `/production/benchmarks` shortlist exposes evidence and feasibility context but does not choose a winner. Explicit user selection creates recipe v1. Recipes preserve the source specification as an immutable snapshot, split work into independently retryable shots, keep failed/rejected attempts, and require five append-only manual approval gates before a version can be frozen successful. Planning a new attempt does not execute an agent or generate media.
+
+This Codex session has not verified native Comfy Cloud MCP capabilities. A future MCP-capable Cursor or Claude Code agent must import a read-only capability snapshot before selecting workflows or models. See [docs/PRODUCTION_RECIPES.md](docs/PRODUCTION_RECIPES.md).
 
 ### Optional live format analysis
 

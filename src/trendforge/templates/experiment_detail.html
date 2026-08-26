@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% macro finding_list(title, items) %}
+<section class="analysis-section">
+  <h3>{{ title }}</h3>
+  {% if items %}
+  <ul>
+    {% for item in items %}
+    <li>
+      {% if item is mapping %}
+        {{ item.get('hypothesis') or item.get('finding') or item.get('observation') or item.get('text') or item.get('note') or item }}
+        {% set support = item.get('supporting_candidates') or item.get('candidate_ids') or item.get('creators') or item.get('support') or [] %}
+        {% if support %}
+        <span class="evidence-support">Support:
+          {% if support is string %}{{ support }}
+          {% elif support is mapping %}
+            {% for key, value in support.items() %}<code>{{ key }}{% if value %}: {{ value }}{% endif %}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+          {% else %}
+            {% for ref in support %}<code>{{ ref }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+          {% endif %}
+        </span>
+        {% endif %}
+      {% else %}
+        {{ item }}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No findings recorded.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+{% block title %}{{ cohort.name }} — TrendForge{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/experiments">Experiments</a> / {{ cohort.name }}</p>
+
+<section class="hero">
+  <h1>{{ cohort.name }}</h1>
+  <p>
+    {{ cohort.source }} / <code>{{ cohort.profile or '—' }}</code>
+    {% if cohort.get('status') %} · <span class="status status-{{ cohort.status }}">{{ cohort.status }}</span>{% endif %}
+    · {{ cohort.member_count }} members
+  </p>
+</section>
+
+<div class="detail-grid">
+  <section class="panel">
+    <h2>Cohort</h2>
+    <table class="table">
+      <tbody>
+        <tr><th>Provider</th><td>{{ cohort.get('provider') or '—' }}</td></tr>
+        <tr><th>Acquisition run</th><td>{% if cohort.get('acquisition_run_id') %}<a href="/acquisition/runs/{{ cohort.acquisition_run_id }}">#{{ cohort.acquisition_run_id }}</a>{% else %}—{% endif %}</td></tr>
+        <tr><th>Source runs</th><td>{% if cohort.get('source_run_ids') %}{% for run_id in cohort.source_run_ids %}<code>#{{ run_id }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %}</td></tr>
+        <tr><th>Config fingerprint</th><td>{% if cohort.config_fingerprint %}<code class="hash">{{ cohort.config_fingerprint }}</code>{% else %}—{% endif %}</td></tr>
+        <tr><th>Current drift</th><td>{% if cohort.config_drift is sameas true %}<span class="pill warn">configuration drift detected</span>{% elif cohort.config_drift is sameas false %}<span class="pill ok">matches frozen profile</span>{% else %}<span class="pill">unknown</span>{% endif %}</td></tr>
+        {% if cohort.get('notes') %}<tr><th>Notes</th><td>{{ cohort.notes }}</td></tr>{% endif %}
+      </tbody>
+    </table>
+    <details class="snapshot">
+      <summary>Frozen configuration snapshot</summary>
+      <pre class="json-block">{{ config_snapshot_json or '—' }}</pre>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>Timing</h2>
+    <p class="muted">Human-facing times are America/Toronto; timestamps remain UTC in storage.</p>
+    <table class="table">
+      <thead><tr><th>Milestone</th><th>Target</th><th>Actual</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>T0</td>
+          <td>{{ timing.get('t0_target_display') or timing.get('t0_display') or cohort.t0_display or '—' }}</td>
+          <td>{{ timing.get('t0_actual_display') or timing.get('t0_display') or cohort.t0_display or '—' }}</td>
+          {% set t0_status = timing.get('t0_status') or '—' %}
+          <td><span class="status status-{{ t0_status }}">{{ t0_status }}</span></td>
+        </tr>
+        <tr>
+          <td>T1</td>
+          <td>{{ timing.get('t1_target_display') or '—' }}{% if timing.get('t1_window_end_display') %} → {{ timing.t1_window_end_display }}{% endif %}</td>
+          <td>{{ timing.get('t1_actual_display') or '—' }}</td>
+          <td><span class="status status-{{ timing.get('t1_status', cohort.t1_status) }}">{{ timing.get('t1_status', cohort.t1_status) }}</span></td>
+        </tr>
+        <tr>
+          <td>T2</td>
+          <td>{{ timing.get('t2_target_display') or cohort.t2_target_display or '—' }}</td>
+          <td>{{ timing.get('t2_actual_display') or '—' }}</td>
+          <td><span class="status status-{{ timing.get('t2_status', cohort.t2_status) }}">{{ timing.get('t2_status', cohort.t2_status) }}</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Cost</h2>
+  <div class="stats">
+    <span>Acquisition <strong>{% if costs.get('acquisition') is not none %}{{ costs.acquisition }} {{ costs.get('currency', 'USD') }}{% else %}unknown{% endif %}</strong></span>
+    <span>T1 observation <strong>{% if costs.get('t1') is not none %}{{ costs.t1 }} {{ costs.get('currency', 'USD') }}{% else %}unknown{% endif %}</strong></span>
+    <span>T2 observation <strong>{% if costs.get('t2') is not none %}{{ costs.t2 }} {{ costs.get('currency', 'USD') }}{% else %}unknown{% endif %}</strong></span>
+    <span>Total <strong>{% if costs.get('total') is not none %}{{ costs.total }} {{ costs.get('currency', 'USD') }}{% else %}unknown{% endif %}</strong></span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Members</h2>
+  {% if members %}
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr><th>Creator / query</th><th>T0</th><th>T1</th><th>T2 / latest</th><th>Early VPH</th><th>Later VPH</th><th>Trajectory</th><th>Labels</th><th>Censoring</th></tr>
+      </thead>
+      <tbody>
+        {% for member in members %}
+        <tr>
+          <td>
+            {% if member.get('candidate_id') %}<a href="/discovery/candidates/{{ member.candidate_id }}"><strong>{{ member.get('creator') or 'Unknown creator' }}</strong></a>{% else %}<strong>{{ member.get('creator') or 'Unknown creator' }}</strong>{% endif %}
+            <span class="muted member-query">{{ member.get('query') or '—' }}</span>
+          </td>
+          <td>{% if member.get('t0_views') is not none %}{{ member.t0_views }}{% else %}—{% endif %}</td>
+          <td>{% if member.get('t1_views') is not none %}{{ member.t1_views }}{% else %}—{% endif %}</td>
+          <td>{% if member.get('t2_views') is not none %}{{ member.t2_views }}{% elif member.get('latest_views') is not none %}{{ member.latest_views }}{% else %}—{% endif %}</td>
+          <td>{% if member.get('early_vph') is not none %}{{ member.early_vph }}{% else %}—{% endif %}</td>
+          <td>{% if member.get('later_vph') is not none %}{{ member.later_vph }}{% else %}—{% endif %}</td>
+          <td>{{ member.get('trajectory') or member.get('outcome') or '—' }}</td>
+          <td>
+            {% set labels = member.get('current_labels') or member.get('labels') or [] %}
+            {% if labels %}{% for label in labels %}<span class="label label-{{ label }}">{{ label }}</span>{% endfor %}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if member.get('right_censored') %}
+              <span class="status status-RIGHT_CENSORED">RIGHT CENSORED</span>
+              {% if member.get('censor_reason') %}<span class="muted member-query">{{ member.censor_reason }}</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">This cohort has no linked members.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Outcome Differential Analysis</h2>
+  <p class="alert research-caveat">These are evidence-bounded research hypotheses, not proven causal explanations and not production scoring changes.</p>
+  {% if latest_analysis %}
+    {% set result = latest_analysis.get('result') or latest_analysis.get('result_json') or {} %}
+    <div class="stats analysis-meta">
+      <span>Evidence mode <strong>{{ latest_analysis.get('evidence_mode') or '—' }}</strong></span>
+      <span>Prompt <strong>{{ latest_analysis.get('prompt_version') or '—' }}</strong></span>
+      <span>Provider / model <strong>{{ latest_analysis.get('provider') or '—' }} / {{ latest_analysis.get('model') or '—' }}</strong></span>
+      <span>Confidence <strong>{{ result.get('confidence') or latest_analysis.get('confidence') or '—' }}</strong></span>
+    </div>
+    {% set available = latest_analysis.get('evidence_available') or result.get('evidence_available') or [] %}
+    {% set missing = latest_analysis.get('evidence_missing') or result.get('evidence_missing') or [] %}
+    {% if available or missing %}
+    <div class="detail-grid evidence-grid">
+      <div>
+        <h3>Evidence available</h3>
+        {% if available %}<ul>{% for item in available %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">Not recorded.</p>{% endif %}
+      </div>
+      <div>
+        <h3>Evidence missing</h3>
+        {% if missing %}<ul>{% for item in missing %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="muted">None recorded.</p>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    <div class="analysis-grid">
+      {{ finding_list('Breakout hypotheses', result.get('breakout_commonalities') or []) }}
+      {{ finding_list('Stall hypotheses', result.get('stall_commonalities') or []) }}
+      {{ finding_list('Possible discriminators', result.get('possible_discriminators') or []) }}
+      {{ finding_list('False-negative findings', result.get('false_negative_hypotheses') or []) }}
+      {{ finding_list('Counterexamples', result.get('counterexamples') or []) }}
+      {{ finding_list('Candidate-level notes', result.get('candidate_level_notes') or []) }}
+      {{ finding_list('Features worth collecting next', result.get('features_worth_collecting') or []) }}
+      {{ finding_list('Limitations', result.get('limitations') or []) }}
+    </div>
+  {% else %}
+  <div class="empty">No outcome differential analysis has been recorded for this cohort.</div>
+  {% endif %}
+
+  {% if analysis_history %}
+  <details class="analysis-history">
+    <summary>Analysis history ({{ analysis_history|length }})</summary>
+    <div class="table-scroll">
+      <table class="table">
+        <thead><tr><th>Created</th><th>Prompt</th><th>Provider / model</th><th>Evidence mode</th></tr></thead>
+        <tbody>
+          {% for analysis in analysis_history %}
+          <tr>
+            <td>{{ analysis.get('created_at_display') or analysis.get('created_at') or '—' }}</td>
+            <td><code>{{ analysis.get('prompt_version') or '—' }}</code></td>
+            <td>{{ analysis.get('provider') or '—' }} / {{ analysis.get('model') or '—' }}</td>
+            <td>{{ analysis.get('evidence_mode') or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from trendforge.db import get_session_factory, init_db
 from trendforge.discovery.gather import run_gathering_jobs
 from trendforge.discovery.tiktok import item_to_video, run_tiktok_discovery, run_tiktok_observation
-from trendforge.models import ContentCandidate, DiscoveryRun
+from trendforge.models import CandidateObservation, ContentCandidate, DiscoveryRun
 
 
 @pytest.fixture()
@@ -76,6 +76,17 @@ def test_item_to_video_flat_keys():
     assert video.duration == 9
 
 
+def test_item_to_video_skips_provider_error_rows():
+    video = item_to_video(
+        {
+            "url": "https://www.tiktok.com/@x/video/1",
+            "errorCode": "POST_NOT_FOUND_OR_PRIVATE",
+            "error": "Post not found or private",
+        }
+    )
+    assert video is None
+
+
 def test_discover_upserts_tiktok(db: Session):
     client = FakeApify([NESTED])
     run = run_tiktok_discovery(db, client=client, cfg={"apify": {"enabled": True, "tiktok": {"hashtags": ["pov"]}}})
@@ -98,6 +109,51 @@ def test_observe_refreshes_by_url(db: Session):
     row = db.query(ContentCandidate).one()
     assert row.views == 200000
     assert "postURLs" in client.calls[0]["input"]
+
+
+def test_observe_preserves_metrics_when_partial_snapshot_omits_them(db: Session):
+    run_tiktok_discovery(db, client=FakeApify([NESTED]), cfg={"apify": {"enabled": True}})
+    partial = {
+        "id": NESTED["id"],
+        "webVideoUrl": NESTED["webVideoUrl"],
+        "text": NESTED["text"],
+        "authorMeta": NESTED["authorMeta"],
+        "videoMeta": NESTED["videoMeta"],
+    }
+    run = run_tiktok_observation(
+        db,
+        client=FakeApify([partial]),
+        cfg={"apify": {"enabled": True, "tiktok": {"observe_top_n": 5}}},
+    )
+    row = db.query(ContentCandidate).one()
+    observations = db.query(CandidateObservation).filter_by(candidate_id=row.id).all()
+    assert run.observations_written == 1
+    assert row.views == 145900
+    assert row.likes == 23400
+    assert row.comments == 46
+    assert len(observations) == 2
+    assert observations[-1].view_count is None
+
+
+def test_observe_skips_provider_error_row_without_erasing_metrics(db: Session):
+    run_tiktok_discovery(db, client=FakeApify([NESTED]), cfg={"apify": {"enabled": True}})
+    error_row = {
+        "url": NESTED["webVideoUrl"],
+        "errorCode": "POST_NOT_FOUND_OR_PRIVATE",
+        "error": "Post not found or private",
+    }
+    run = run_tiktok_observation(
+        db,
+        client=FakeApify([error_row]),
+        cfg={"apify": {"enabled": True, "tiktok": {"observe_top_n": 5}}},
+    )
+    row = db.query(ContentCandidate).one()
+    observations = db.query(CandidateObservation).filter_by(candidate_id=row.id).all()
+    assert run.observations_written == 0
+    assert row.views == 145900
+    assert row.likes == 23400
+    assert row.comments == 46
+    assert len(observations) == 1
 
 
 def test_gather_tiktok_without_youtube(db: Session, monkeypatch):

@@ -1,0 +1,33 @@
+{
+  "schema_version": "research-v1",
+  "display_timezone": "America/Toronto",
+  "cohort_timing_defaults": {
+    "default": {
+      "t1_window_start_hours": 3.0,
+      "t1_target_hours": 3.5,
+      "t1_window_end_hours": 4.0,
+      "t2_target_hours": 168.0
+    },
+    "tiktok_fresh_search": {
+      "t1_window_start_hours": 3.0,
+      "t1_target_hours": 3.5,
+      "t1_window_end_hours": 4.0,
+      "t2_target_hours": 168.0
+    }
+  },
+  "outcome_classification": {
+    "version": "trajectory-v1",
+    "breakout": {
+      "minimum_latest_views": 100000,
+      "minimum_growth_multiple": 10.0,
+      "alternative_absolute_growth": 1000000
+    },
+    "strong_riser": {
+      "minimum_latest_views": 10000,
+      "minimum_growth_multiple": 5.0
+    },
+    "moderate": {
+      "minimum_latest_views": 1000
+    }
+  }
+}

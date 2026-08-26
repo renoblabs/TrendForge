@@ -290,6 +290,8 @@ def run_acquisition(
     rejected_sample: list[dict[str, Any]] = []
     normalized_items = []
     kept_ids: list[int] = []
+    new_candidate_ids: list[int] = []
+    duplicate_candidate_ids: list[int] = []
     query_events: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     rank = 0
@@ -344,6 +346,10 @@ def run_acquisition(
         query_events.append({"query": item.source_query, "outcome": outcome})
         if candidate is not None and candidate.id is not None:
             kept_ids.append(candidate.id)
+            if outcome == "new":
+                new_candidate_ids.append(candidate.id)
+            else:
+                duplicate_candidate_ids.append(candidate.id)
         samples.append(quality_sample(item, now=now))
 
     samples.sort(
@@ -404,6 +410,12 @@ def run_acquisition(
     meta["sampling_quality"] = population.get("sampling_quality")
     meta["query_yield"] = query_yield
     meta["creator_baselines"] = creator_baselines
+    # Cohort registration needs immutable membership from this exact pass.  The
+    # candidate's acquisition_run_id is intentionally mutable on rediscovery,
+    # so persist the per-run outcome IDs alongside the acquisition evidence.
+    meta["kept_candidate_ids"] = list(dict.fromkeys(kept_ids))
+    meta["new_candidate_ids"] = list(dict.fromkeys(new_candidate_ids))
+    meta["duplicate_candidate_ids"] = list(dict.fromkeys(duplicate_candidate_ids))
     meta["comparison"] = _previous_source_run(
         db, source=source, actor_id=run.actor_id, exclude_id=run.id
     )

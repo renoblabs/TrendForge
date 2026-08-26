@@ -94,3 +94,9 @@ def load_data_sources_config() -> dict:
     path = CONFIG_DIR / "data_sources.json"
     with path.open(encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_research_config() -> dict:
+    path = CONFIG_DIR / "research.json"
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)

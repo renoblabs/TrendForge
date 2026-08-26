@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Benchmark Shortlist — TrendForge{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/production/recipes">Production</a> / Benchmark shortlist</p>
+<section class="hero">
+  <h1>Quality benchmark shortlist</h1>
+  <p class="muted">Read-only evidence and production context. TrendForge never selects a benchmark automatically.</p>
+  <p>Benchmark status: <strong>{{ status }}</strong></p>
+  {% if selection %}
+  <p class="alert ok">ProductionSpec #{{ selection.production_spec_id }} was explicitly selected by {{ selection.selected_by }} at {{ selection.created_at }}.</p>
+  {% else %}
+  <p class="alert">Awaiting explicit user selection. Scores and completeness do not constitute approval.</p>
+  {% endif %}
+  {% if error %}<p class="alert err">{{ error }}</p>{% endif %}
+  {% if message %}<p class="alert ok">{{ message }}</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Selection criteria</h2>
+  <p>Review real format evidence, creative appeal, first-two-second hook, production feasibility, variation potential, continuity difficulty, Comfy Cloud capability fit, and user preference. Native capability fit remains unknown until a snapshot is imported.</p>
+</section>
+
+{% for row in rows %}
+<article class="panel benchmark-card">
+  <header class="card-top">
+    <div><h2><a href="/production/specs/{{ row.spec.id }}">{{ row.title }}</a></h2><p><code>{{ row.spec.format_family }}</code> · {{ row.benchmark_state }}</p></div>
+    <div><span class="pill">{{ row.family_status }}</span> <span class="pill">evidence {{ row.evidence_strength }}</span></div>
+  </header>
+  <p><strong>Hook:</strong> {{ row.hook or 'Not specified' }}</p>
+  <div class="grid two compact">
+    <p>Duration: <strong>{{ row.duration_seconds or 'unknown' }}s</strong><br>Shots: <strong>{{ row.shot_count }}</strong><br>Complexity: <strong>{{ row.production_complexity if row.production_complexity is not none else 'unknown' }}</strong></p>
+    <p>AI leverage: <strong>{{ row.ai_leverage if row.ai_leverage is not none else 'unknown' }}</strong><br>Variation potential: <strong>{{ row.variation_potential if row.variation_potential is not none else 'unknown' }}</strong><br>Family score: <strong>{{ '%.2f'|format(row.family_score) if row.family_score is not none else 'unknown' }}</strong></p>
+    <p>Existing generation jobs: <strong>{{ row.generation_count }}</strong><br>Existing assets: <strong>{{ row.asset_count }}</strong></p>
+    <p>Capability fit: <strong>NOT_CAPTURED</strong><br>Existing recipe: <strong>{{ row.existing_recipe.id if row.existing_recipe else 'none' }}</strong></p>
+  </div>
+  {% if row.eligibility_error %}<p class="alert err">Not currently recipe-valid: {{ row.eligibility_error }}</p>{% endif %}
+  {% if row.can_select %}
+  <form class="approval-form" method="post" action="/production/benchmarks/{{ row.spec.id }}/select">
+    <label>User/reviewer <input name="selected_by" required></label>
+    <label>Selection reason <input name="reason" required placeholder="Why this is the quality benchmark"></label>
+    <button type="submit">SELECT AS QUALITY BENCHMARK</button>
+  </form>
+  <p class="muted">This explicit action creates recipe v1. It does not launch an agent or generate media.</p>
+  {% elif row.benchmark_state == 'EXCLUDED_BY_USER' %}
+  <p class="muted">Explicitly excluded from benchmark selection. Historical spec/jobs/assets remain unchanged.</p>
+  {% elif status == 'USER_SELECTED' and row.benchmark_state != 'USER_SELECTED' %}
+  <p class="muted">Another benchmark has already been explicitly selected.</p>
+  {% endif %}
+</article>
+{% else %}
+<section class="empty"><h2>No ProductionSpecs available</h2><p>Create creative specifications first; no benchmark can be selected yet.</p></section>
+{% endfor %}
+{% endblock %}

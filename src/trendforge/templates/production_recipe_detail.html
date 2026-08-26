@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.name }} — Production{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="/production/recipes">Production</a> / Recipe #{{ recipe.id }} / v{{ version.version_number }}</p>
+<section class="hero">
+  <h1>{{ recipe.name }}</h1>
+  <p><code>{{ recipe.format_family }}</code> · Recipe {{ recipe.status.value }} · Version {{ version.status.value }}</p>
+  <p class="muted">Source <a href="/production/specs/{{ version.source_production_spec_id }}">ProductionSpec #{{ version.source_production_spec_id }}</a> · Snapshot checksum <code>{{ version.content_checksum }}</code></p>
+  <p>
+    <a class="btn" href="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/export.json">Export manifest JSON</a>
+    <a class="btn" href="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/export.md">Export manifest Markdown</a>
+  </p>
+  {% if error %}<p class="alert err">{{ error }}</p>{% endif %}
+  {% if message %}<p class="alert ok">{{ message }}</p>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Production stages</h2>
+  <div class="stage-rail">
+  {% for item in stage_rail %}
+    <div class="stage-node {{ item.status }}"><strong>{{ item.label }}</strong><span>{{ item.status|replace('-', ' ') }}</span></div>
+  {% endfor %}
+  </div>
+  <p>Current stage: <strong>{{ state.current_stage }}</strong> · Current gate: <strong>{{ state.current_gate or 'NONE' }}</strong></p>
+</section>
+
+<section class="grid two">
+  <div class="panel">
+    <h2>Latest gate state</h2>
+    {% if approvals %}
+      {% set latest = approvals[0] %}
+      <p><strong>{{ latest.gate.value }}</strong> — {{ latest.decision.value }}</p>
+      <p>{{ latest.reviewer }} · {{ latest.created_at }}</p>
+      <p>{{ latest.reason or 'No reason supplied.' }}</p>
+    {% else %}
+      <p>No approval events. All gates remain unapproved.</p>
+    {% endif %}
+    <p class="muted">Approval history is append-only. Reject, request changes, and revoke require a reason.</p>
+  </div>
+  <div class="panel">
+    <h2>Budget and time</h2>
+    <p>Attempts: <strong>{{ summary.attempt_count }}</strong> · successful {{ summary.successful_attempts }} · failed {{ summary.failed_attempts }} · rejected {{ summary.rejected_attempts }}</p>
+    <p>Cost:
+      {% if summary.total_cost is not none %}<strong>{{ summary.total_cost }} {{ summary.currency or '' }}</strong>
+      {% elif summary.known_cost_total is not none %}<strong>{{ summary.known_cost_total }} known</strong> + {{ summary.cost_unknown_attempts }} unknown
+      {% else %}<strong>Unknown</strong> ({{ summary.cost_unknown_attempts }} attempts){% endif %}
+    </p>
+    <p>Elapsed:
+      {% if summary.total_elapsed_seconds is not none %}<strong>{{ summary.total_elapsed_seconds }}s</strong>
+      {% elif summary.known_elapsed_seconds is not none %}<strong>{{ summary.known_elapsed_seconds }}s known</strong> + {{ summary.elapsed_unknown_attempts }} unknown
+      {% else %}<strong>Unknown</strong>{% endif %}
+    </p>
+    {% if summary.mixed_currency %}<p class="alert err">Costs use mixed currencies and are not combined into a total.</p>{% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Version history</h2>
+  <p>
+  {% for item in versions %}
+    <a class="pill {% if item.id == version.id %}ok{% endif %}" href="/production/recipes/{{ recipe.id }}/versions/{{ item.id }}">v{{ item.version_number }} {{ item.status.value }}</a>
+  {% endfor %}
+  </p>
+  {% if version.status.value != 'FROZEN' %}
+  <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/clone"><button type="submit">Clone to new tuning version</button></form>
+  <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/freeze"><button type="submit">Freeze successful version</button></form>
+  {% else %}
+  <p class="muted">Frozen versions are read-only. Clone this version to continue tuning.</p>
+  <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/clone"><button type="submit">Clone frozen version</button></form>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Visual bible</h2>
+  <p>Capability snapshot: <strong>{{ capability.id if capability else 'NOT_CAPTURED' }}</strong></p>
+  {% if reference_assets %}
+  <div class="contact-sheet">
+    {% for asset in reference_assets %}<a href="/generation/assets/{{ asset.asset_id }}/file">Reference asset #{{ asset.asset_id }}</a>{% endfor %}
+  </div>
+  {% else %}<p class="muted">No reference assets linked yet.</p>{% endif %}
+  {% if version.status.value != 'FROZEN' %}
+  <form method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/visual-bible">
+    <textarea class="copy-block" name="visual_bible_json" rows="18" required>{{ version.visual_bible_json|tojson(indent=2) }}</textarea>
+    <button type="submit">Save visual bible</button>
+  </form>
+  <form class="approval-form" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/approvals">
+    <input type="hidden" name="gate" value="VISUAL_BIBLE_APPROVAL"><input type="hidden" name="scope_type" value="VISUAL_BIBLE">
+    <label>Decision <select name="decision"><option>APPROVE</option><option>REJECT</option><option>REQUEST_CHANGES</option><option>REVOKE</option></select></label>
+    <label>Reviewer <input name="reviewer" required></label><label>Reason <input name="reason" placeholder="Required unless approving"></label>
+    <button type="submit">Append visual-bible decision</button>
+  </form>
+  {% else %}<pre>{{ version.visual_bible_json|tojson(indent=2) }}</pre>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Shot matrix</h2>
+  {% for entry in shots %}
+  {% set shot = entry.shot %}
+  <article class="shot-card">
+    <header><h3>Shot {{ shot.shot_number }} — {{ shot.title }}</h3><span>{{ shot.start_seconds }}–{{ shot.end_seconds }}s ({{ shot.duration_seconds }}s)</span></header>
+    <p><strong>Purpose:</strong> {{ shot.purpose }}</p>
+    <div class="grid two compact">
+      <div><strong>Camera / framing</strong><pre>{{ shot.camera_json|tojson(indent=2) }}
+{{ shot.framing_json|tojson(indent=2) }}</pre></div>
+      <div><strong>Subject / action</strong><pre>{{ shot.subject_json|tojson(indent=2) }}
+{{ shot.action_json|tojson(indent=2) }}</pre></div>
+      <div><strong>Environment</strong><pre>{{ shot.environment_json|tojson(indent=2) }}</pre></div>
+      <div><strong>Continuity in → out</strong><pre>{{ shot.continuity_inputs_json|tojson(indent=2) }}
+→ {{ shot.continuity_outputs_json|tojson(indent=2) }}</pre></div>
+    </div>
+    <p>Required assets: {{ shot.required_asset_roles_json|tojson }} · Keyframe: <strong>{{ entry.keyframe_approval.decision.value if entry.keyframe_approval else 'NOT_APPROVED' }}</strong> · Motion: <strong>{{ entry.motion_approval.decision.value if entry.motion_approval else 'NOT_APPROVED' }}</strong></p>
+    <p>Attempts {{ entry.attempts|length }} · Cost {{ entry.known_cost if entry.known_cost is not none else 'unknown' }}{% if entry.cost_unknown %} + {{ entry.cost_unknown }} unknown{% endif %} · Elapsed {{ entry.known_elapsed if entry.known_elapsed is not none else 'unknown' }}{% if entry.elapsed_unknown %} + {{ entry.elapsed_unknown }} unknown{% endif %}</p>
+    {% if version.status.value != 'FROZEN' %}
+    <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/attempts"><input type="hidden" name="shot_id" value="{{ shot.id }}"><input type="hidden" name="stage" value="KEYFRAMES"><button type="submit">Create new keyframe attempt</button></form>
+    <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/attempts"><input type="hidden" name="shot_id" value="{{ shot.id }}"><input type="hidden" name="stage" value="MOTION"><button type="submit">Create new motion attempt</button></form>
+    <span class="pill warn">Awaiting agent execution</span>
+    {% endif %}
+    {% if entry.attempts %}
+    <div class="table-wrap"><table><thead><tr><th>Attempt</th><th>Provider / workflow</th><th>Parameters</th><th>Assets</th><th>Cost / elapsed</th><th>QA</th><th>Approval</th></tr></thead><tbody>
+    {% for item in entry.attempts %}{% set attempt = item.attempt %}
+      <tr><td>#{{ attempt.attempt_number }}<br>{{ attempt.stage.value }} · {{ attempt.status.value }}<br><a href="/production/attempts/{{ attempt.id }}/handoff.json">handoff</a></td>
+      <td>{{ attempt.provider or 'unassigned' }} / {{ attempt.model or 'unassigned' }}<br>{{ attempt.template_id or attempt.workflow_id or 'unselected' }}</td>
+      <td><pre>{{ attempt.parameters_json|tojson(indent=2) }}</pre></td>
+      <td>{% for asset in item.assets %}<a href="/generation/assets/{{ asset.asset_id }}/file">{{ asset.role }} #{{ asset.asset_id }}</a><br>{% else %}None{% endfor %}</td>
+      <td>{{ attempt.reported_cost if attempt.reported_cost is not none else 'unknown' }} {{ attempt.currency or '' }}<br>{{ attempt.elapsed_seconds if attempt.elapsed_seconds is not none else 'unknown' }}s</td>
+      <td><pre>{{ attempt.qa_result_json|tojson(indent=2) }}</pre></td>
+      <td>
+      {% if version.status.value != 'FROZEN' and attempt.stage.value in ['KEYFRAMES', 'MOTION'] %}
+        <form method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/approvals">
+          <input type="hidden" name="gate" value="{{ 'KEYFRAME_APPROVAL' if attempt.stage.value == 'KEYFRAMES' else 'MOTION_APPROVAL' }}">
+          <input type="hidden" name="scope_type" value="{{ 'SHOT_KEYFRAME' if attempt.stage.value == 'KEYFRAMES' else 'SHOT_MOTION' }}"><input type="hidden" name="scope_id" value="{{ shot.id }}"><input type="hidden" name="approved_attempt_id" value="{{ attempt.id }}">
+          <select name="decision"><option>APPROVE</option><option>REJECT</option><option>REQUEST_CHANGES</option><option>REVOKE</option></select><input name="reviewer" required placeholder="Reviewer"><input name="reason" placeholder="Reason"><button type="submit">Append</button>
+        </form>
+      {% else %}Read only{% endif %}
+      </td></tr>
+    {% endfor %}</tbody></table></div>
+    {% else %}<p class="muted">No attempts for this shot.</p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2>Recipe-level attempts and approvals</h2>
+  {% if version.status.value != 'FROZEN' %}
+  <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/attempts"><input type="hidden" name="stage" value="AUDIO"><button type="submit">Plan audio attempt</button></form>
+  <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/attempts"><input type="hidden" name="stage" value="ASSEMBLY"><button type="submit">Plan rough-cut attempt</button></form>
+  <form class="inline" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/attempts"><input type="hidden" name="stage" value="FINAL_QA"><button type="submit">Plan final-render attempt</button></form>
+  {% endif %}
+  {% for item in recipe_attempts %}{% set attempt = item.attempt %}
+  <article class="attempt-card"><h3>{{ attempt.stage.value }} attempt #{{ attempt.attempt_number }} — {{ attempt.status.value }}</h3>
+    <p>Provider/model/template: {{ attempt.provider or 'unassigned' }} / {{ attempt.model or 'unassigned' }} / {{ attempt.template_id or attempt.workflow_id or 'unselected' }} · Cost {{ attempt.reported_cost if attempt.reported_cost is not none else 'unknown' }} · Elapsed {{ attempt.elapsed_seconds if attempt.elapsed_seconds is not none else 'unknown' }}s</p>
+    <p><a href="/production/attempts/{{ attempt.id }}/handoff.json">Export attempt handoff</a></p>
+    {% if version.status.value != 'FROZEN' and attempt.stage.value in ['ASSEMBLY', 'FINAL_QA'] %}
+    <form class="approval-form" method="post" action="/production/recipes/{{ recipe.id }}/versions/{{ version.id }}/approvals">
+      <input type="hidden" name="gate" value="{{ 'ROUGH_CUT_APPROVAL' if attempt.stage.value == 'ASSEMBLY' else 'FINAL_RENDER_APPROVAL' }}"><input type="hidden" name="scope_type" value="{{ 'ROUGH_CUT' if attempt.stage.value == 'ASSEMBLY' else 'FINAL_RENDER' }}"><input type="hidden" name="approved_attempt_id" value="{{ attempt.id }}">
+      <label>Decision <select name="decision"><option>APPROVE</option><option>REJECT</option><option>REQUEST_CHANGES</option><option>REVOKE</option></select></label><label>Reviewer <input name="reviewer" required></label><label>Reason <input name="reason"></label><button type="submit">Append decision</button>
+    </form>{% endif %}
+  </article>
+  {% else %}<p class="muted">No recipe-level attempts.</p>{% endfor %}
+</section>
+
+<section class="panel">
+  <h2>Approval history</h2>
+  {% if approvals %}<div class="table-wrap"><table><thead><tr><th>Time</th><th>Gate / scope</th><th>Decision</th><th>Reviewer</th><th>Attempt / asset</th><th>Reason</th></tr></thead><tbody>
+  {% for event in approvals %}<tr><td>{{ event.created_at }}</td><td>{{ event.gate.value }}<br>{{ event.scope_type.value }} {{ event.scope_id or '' }}</td><td>{{ event.decision.value }}</td><td>{{ event.reviewer }}</td><td>{{ event.approved_attempt_id or '—' }} / {{ event.approved_asset_id or '—' }}</td><td>{{ event.reason or '—' }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p>No events. Nothing is approved or frozen.</p>{% endif %}
+</section>
+{% endblock %}
