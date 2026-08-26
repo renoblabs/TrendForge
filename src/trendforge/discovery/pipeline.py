@@ -273,13 +273,18 @@ def record_observation(
 
 
 def refresh_candidate_metrics(candidate: ContentCandidate, video: DiscoveredVideo) -> None:
-    candidate.views = video.views
-    candidate.likes = video.likes
-    candidate.comments = video.comments
+    if video.views is not None:
+        candidate.views = video.views
+    if video.likes is not None:
+        candidate.likes = video.likes
+    if video.comments is not None:
+        candidate.comments = video.comments
     if video.shares is not None:
         candidate.shares = video.shares
-    candidate.favorite_count = video.favorite_count
-    candidate.channel_subscriber_count = video.channel_subscriber_count
+    if video.favorite_count is not None:
+        candidate.favorite_count = video.favorite_count
+    if video.channel_subscriber_count is not None:
+        candidate.channel_subscriber_count = video.channel_subscriber_count
     if video.title:
         candidate.title = video.title
     if video.description is not None:

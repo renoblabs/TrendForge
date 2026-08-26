@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -47,6 +48,7 @@ from trendforge.models import (
     FormatBrainstormSet,
     FormatStatus,
     GenerationJob,
+    ProductionRecipe,
     ProductionSpec,
     utcnow,
 )
@@ -58,6 +60,24 @@ from trendforge.production.spec_generate import (
     specs_by_brainstorm,
 )
 from trendforge.production.spec_prompt import DEFAULT_DURATION_SECONDS
+from trendforge.production.recipes import (
+    ProductionRecipeError,
+    attempt_handoff_manifest,
+    benchmark_shortlist,
+    benchmark_status,
+    clone_recipe_version,
+    create_attempt,
+    current_benchmark_selection,
+    freeze_recipe_version,
+    recipe_list_rows,
+    recipe_manifest,
+    recipe_manifest_markdown,
+    recipe_version_view,
+    record_approval_event,
+    select_quality_benchmark,
+    update_visual_bible,
+)
+from trendforge.research.cohorts import cohort_detail_view, list_cohort_views
 from trendforge.services import analyze_candidate, analyze_pending, ingest_text
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -93,6 +113,34 @@ def _nav_context(request: Request) -> dict:
         "has_apify": settings.has_apify,
         "app_name": "TrendForge",
     }
+
+
+@app.get("/experiments", response_class=HTMLResponse)
+def experiment_list(request: Request, db: Session = Depends(get_db)):
+    views = list_cohort_views(db)
+    return templates.TemplateResponse(
+        "experiments.html",
+        {
+            **_nav_context(request),
+            "page": "experiments",
+            **views,
+        },
+    )
+
+
+@app.get("/experiments/{cohort_id}", response_class=HTMLResponse)
+def experiment_detail(cohort_id: int, request: Request, db: Session = Depends(get_db)):
+    detail = cohort_detail_view(db, cohort_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Research cohort not found")
+    return templates.TemplateResponse(
+        "experiment_detail.html",
+        {
+            **_nav_context(request),
+            "page": "experiments",
+            **detail,
+        },
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -562,6 +610,10 @@ def production_spec_detail(
         except (TypeError, ValueError):
             idea = {}
     spec = row.spec_json or {}
+    existing_recipe = (
+        db.query(ProductionRecipe).filter_by(source_production_spec_id=row.id).one_or_none()
+    )
+    benchmark_selection = current_benchmark_selection(db)
     return templates.TemplateResponse(
         "production_spec.html",
         {
@@ -571,6 +623,8 @@ def production_spec_detail(
             "spec": spec,
             "idea": idea,
             "export_text": spec_to_markdown(spec),
+            "existing_recipe": existing_recipe,
+            "benchmark_selection": benchmark_selection,
         },
     )
 
@@ -585,6 +639,255 @@ def production_spec_export(spec_id: int, db: Session = Depends(get_db)):
         "Content-Disposition": f'attachment; filename="production_spec_{spec_id}.md"'
     }
     return PlainTextResponse(text, media_type="text/markdown; charset=utf-8", headers=headers)
+
+
+@app.get("/production/recipes", response_class=HTMLResponse)
+def production_recipe_list(
+    request: Request,
+    error: str | None = None,
+    message: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return templates.TemplateResponse(
+        "production_recipes.html",
+        {
+            **_nav_context(request),
+            "page": "production",
+            "rows": recipe_list_rows(db),
+            "benchmark_status": benchmark_status(db),
+            "error": error,
+            "message": message,
+        },
+    )
+
+
+@app.get("/production/benchmarks", response_class=HTMLResponse)
+def production_benchmark_shortlist(
+    request: Request,
+    error: str | None = None,
+    message: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return templates.TemplateResponse(
+        "production_benchmarks.html",
+        {
+            **_nav_context(request),
+            "page": "production",
+            **benchmark_shortlist(db),
+            "error": error,
+            "message": message,
+        },
+    )
+
+
+@app.post("/production/benchmarks/{spec_id}/select")
+def production_benchmark_select(
+    spec_id: int,
+    selected_by: str = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        _, recipe, version, _ = select_quality_benchmark(
+            db,
+            spec_id,
+            selected_by=selected_by,
+            reason=reason,
+        )
+    except ProductionRecipeError as exc:
+        return RedirectResponse(
+            url=f"/production/benchmarks?error={quote(str(exc))}", status_code=303
+        )
+    return RedirectResponse(
+        url=f"/production/recipes/{recipe.id}/versions/{version.id}", status_code=303
+    )
+
+
+@app.get("/production/recipes/{recipe_id}", response_class=HTMLResponse)
+def production_recipe_detail(
+    recipe_id: int,
+    request: Request,
+    error: str | None = None,
+    message: str | None = None,
+    db: Session = Depends(get_db),
+):
+    recipe = db.get(ProductionRecipe, recipe_id)
+    if recipe is None or recipe.current_version_id is None:
+        raise HTTPException(status_code=404, detail="Production recipe not found")
+    return production_recipe_version_detail(
+        recipe_id, recipe.current_version_id, request, error, message, db
+    )
+
+
+@app.get(
+    "/production/recipes/{recipe_id}/versions/{version_id}",
+    response_class=HTMLResponse,
+)
+def production_recipe_version_detail(
+    recipe_id: int,
+    version_id: int,
+    request: Request,
+    error: str | None = None,
+    message: str | None = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        view = recipe_version_view(db, recipe_id, version_id)
+    except ProductionRecipeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return templates.TemplateResponse(
+        "production_recipe_detail.html",
+        {
+            **_nav_context(request),
+            "page": "production",
+            **view,
+            "error": error,
+            "message": message,
+        },
+    )
+
+
+def _recipe_redirect(recipe_id: int, version_id: int, *, error: str | None = None, message: str | None = None) -> RedirectResponse:
+    suffix = ""
+    if error:
+        suffix = f"?error={quote(error)}"
+    elif message:
+        suffix = f"?message={quote(message)}"
+    return RedirectResponse(
+        url=f"/production/recipes/{recipe_id}/versions/{version_id}{suffix}",
+        status_code=303,
+    )
+
+
+@app.post("/production/recipes/{recipe_id}/versions/{version_id}/clone")
+def production_recipe_clone(
+    recipe_id: int, version_id: int, db: Session = Depends(get_db)
+):
+    try:
+        version = clone_recipe_version(db, version_id)
+        if version.recipe_id != recipe_id:
+            raise ProductionRecipeError("recipe/version mismatch")
+    except ProductionRecipeError as exc:
+        return _recipe_redirect(recipe_id, version_id, error=str(exc))
+    return _recipe_redirect(recipe_id, version.id, message=f"Created recipe v{version.version_number}")
+
+
+@app.post("/production/recipes/{recipe_id}/versions/{version_id}/visual-bible")
+def production_visual_bible_update(
+    recipe_id: int,
+    version_id: int,
+    visual_bible_json: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        value = json.loads(visual_bible_json)
+        update_visual_bible(db, version_id, value)
+    except (json.JSONDecodeError, ProductionRecipeError) as exc:
+        return _recipe_redirect(recipe_id, version_id, error=str(exc))
+    return _recipe_redirect(recipe_id, version_id, message="Visual bible saved")
+
+
+@app.post("/production/recipes/{recipe_id}/versions/{version_id}/attempts")
+def production_attempt_create(
+    recipe_id: int,
+    version_id: int,
+    stage: str = Form(...),
+    shot_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        attempt = create_attempt(db, version_id, stage, shot_id=shot_id)
+    except ProductionRecipeError as exc:
+        return _recipe_redirect(recipe_id, version_id, error=str(exc))
+    return _recipe_redirect(
+        recipe_id,
+        version_id,
+        message=f"Attempt {attempt.id} planned; awaiting agent execution",
+    )
+
+
+@app.post("/production/recipes/{recipe_id}/versions/{version_id}/approvals")
+def production_approval_create(
+    recipe_id: int,
+    version_id: int,
+    gate: str = Form(...),
+    scope_type: str = Form(...),
+    decision: str = Form(...),
+    reviewer: str = Form(...),
+    reason: str = Form(""),
+    scope_id: int | None = Form(None),
+    approved_attempt_id: int | None = Form(None),
+    approved_asset_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        record_approval_event(
+            db,
+            version_id,
+            gate=gate,
+            scope_type=scope_type,
+            decision=decision,
+            reviewer=reviewer,
+            reason=reason,
+            scope_id=scope_id,
+            approved_attempt_id=approved_attempt_id,
+            approved_asset_id=approved_asset_id,
+        )
+    except ProductionRecipeError as exc:
+        return _recipe_redirect(recipe_id, version_id, error=str(exc))
+    return _recipe_redirect(recipe_id, version_id, message=f"{decision} event appended")
+
+
+@app.post("/production/recipes/{recipe_id}/versions/{version_id}/freeze")
+def production_recipe_freeze(
+    recipe_id: int, version_id: int, db: Session = Depends(get_db)
+):
+    try:
+        freeze_recipe_version(db, version_id)
+    except ProductionRecipeError as exc:
+        return _recipe_redirect(recipe_id, version_id, error=str(exc))
+    return _recipe_redirect(recipe_id, version_id, message="Recipe version frozen successful")
+
+
+@app.get("/production/recipes/{recipe_id}/versions/{version_id}/export.json")
+def production_recipe_export_json(
+    recipe_id: int, version_id: int, db: Session = Depends(get_db)
+):
+    try:
+        payload = recipe_manifest(db, recipe_id, version_id)
+    except ProductionRecipeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return JSONResponse(
+        payload,
+        headers={"Content-Disposition": f'attachment; filename="recipe_{recipe_id}_v{version_id}.json"'},
+    )
+
+
+@app.get("/production/recipes/{recipe_id}/versions/{version_id}/export.md")
+def production_recipe_export_markdown(
+    recipe_id: int, version_id: int, db: Session = Depends(get_db)
+):
+    try:
+        payload = recipe_manifest(db, recipe_id, version_id)
+    except ProductionRecipeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return PlainTextResponse(
+        recipe_manifest_markdown(payload),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="recipe_{recipe_id}_v{version_id}.md"'},
+    )
+
+
+@app.get("/production/attempts/{attempt_id}/handoff.json")
+def production_attempt_handoff(attempt_id: int, db: Session = Depends(get_db)):
+    try:
+        payload = attempt_handoff_manifest(db, attempt_id)
+    except ProductionRecipeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return JSONResponse(
+        payload,
+        headers={"Content-Disposition": f'attachment; filename="attempt_{attempt_id}_handoff.json"'},
+    )
 
 
 @app.get("/generation", response_class=HTMLResponse)

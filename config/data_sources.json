@@ -152,7 +152,7 @@
       "status": "experimental",
       "label": "Instagram Creator Reels",
       "rationale": "Profile Reels tab sampling for creator-relative baselines, not trend discovery. postsPerProfile minimum on this Actor is 5. Handles live in this list only. Live v1: dudeperfect and mkbhd returned Reels; saturdaynightlive returned 0 and was removed. Starter list is a small public English/NA mix for baseline mechanics, not creator discovery.",
-      "creators": ["dudeperfect", "mkbhd", "ijustine", "thetryguys", "yestheory"],
+      "creators": ["dudeperfect", "mkbhd", "ijustine", "zachking", "yestheory"],
       "creator_input_key": "instagramUsernames",
       "default_limit": 25,
       "max_limit": 50,

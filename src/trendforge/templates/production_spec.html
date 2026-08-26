@@ -7,6 +7,12 @@
   <p class="muted">Executable creative brief. Not a generated video. Not research evidence.</p>
   <p>
     <a class="btn" href="/production/specs/{{ row.id }}/export.md">Download production_spec.md</a>
+    {% if existing_recipe %}
+    <a class="btn" href="/production/recipes/{{ existing_recipe.id }}">Open production recipe</a>
+    {% else %}
+    <a class="btn" href="/production/benchmarks">Review benchmark shortlist</a>
+    {% endif %}
+    {% if benchmark_selection and benchmark_selection.production_spec_id == row.id %}<span class="pill ok">USER_SELECTED benchmark</span>{% endif %}
     <span class="pill">{{ row.status }}</span>
     <span class="pill">{{ row.prompt_version }}</span>
     <span class="pill">{{ row.model }}</span>

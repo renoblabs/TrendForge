@@ -240,6 +240,8 @@ def test_live_instagram_creators_are_configured():
     creators = live["profiles"]["instagram_creator_reels"]["creators"]
     assert 5 <= len(creators) <= 10
     assert "saturdaynightlive" not in creators
+    assert "thetryguys" not in creators
+    assert "zachking" in creators
     assert "" not in creators
     assert all(str(c).strip() for c in creators)
     ig_py = Path(__file__).resolve().parents[1] / "src/trendforge/acquisition/instagram.py"

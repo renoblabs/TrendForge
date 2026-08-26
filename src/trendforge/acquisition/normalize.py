@@ -193,6 +193,8 @@ def normalize_tiktok_item(
     search_rank: int | None = None,
     max_short_seconds: float = 60,
 ) -> NormalizedItem | None:
+    if item.get("errorCode") or item.get("_warning"):
+        return None
     url = str(pick(item, "webVideoUrl", "videoUrl", "shareUrl", "url") or "")
     vid = tiktok_video_id(url, item)
     if not vid or not url:

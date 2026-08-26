@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Experiments — TrendForge{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Cohort Experiments</h1>
+  <p>Frozen acquisition cohorts and their scheduled longitudinal measurements. Cohorts reference the existing candidates and observations; they do not copy or rescore them.</p>
+</section>
+
+<section class="panel">
+  <h2>Due measurements</h2>
+  {% if due_measurements %}
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr><th>Cohort</th><th>Profile</th><th>Members</th><th>T1</th><th>T2</th><th>Target</th><th>Configuration</th></tr>
+      </thead>
+      <tbody>
+        {% for cohort in due_measurements %}
+        <tr>
+          <td><a href="/experiments/{{ cohort.id }}"><strong>{{ cohort.name }}</strong></a></td>
+          <td>{{ cohort.source }} / <code>{{ cohort.profile or '—' }}</code></td>
+          <td>{{ cohort.member_count }}</td>
+          <td><span class="status status-{{ cohort.t1_status }}">{{ cohort.t1_status }}</span></td>
+          <td><span class="status status-{{ cohort.t2_status }}">{{ cohort.t2_status }}</span></td>
+          <td>{{ cohort.get('next_target_display') or cohort.get('target_display') or cohort.t2_target_display or '—' }}</td>
+          <td>
+            {% if cohort.config_fingerprint %}<code title="{{ cohort.config_fingerprint }}">{{ cohort.config_fingerprint[:12] }}</code>{% else %}—{% endif %}
+            {% if cohort.config_drift is sameas true %}<span class="pill warn">drift</span>{% elif cohort.config_drift is sameas false %}<span class="pill ok">frozen</span>{% else %}<span class="pill">drift unknown</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No measurements are due or overdue.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Active cohorts</h2>
+  {% if active_cohorts %}
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr><th>Cohort</th><th>Source / profile</th><th>Members</th><th>T0</th><th>T1</th><th>T2</th><th>Configuration</th></tr>
+      </thead>
+      <tbody>
+        {% for cohort in active_cohorts %}
+        <tr>
+          <td><a href="/experiments/{{ cohort.id }}"><strong>{{ cohort.name }}</strong></a></td>
+          <td>{{ cohort.source }} / <code>{{ cohort.profile or '—' }}</code></td>
+          <td>{{ cohort.member_count }}</td>
+          <td>{{ cohort.t0_display or '—' }}</td>
+          <td><span class="status status-{{ cohort.t1_status }}">{{ cohort.t1_status }}</span></td>
+          <td>
+            <span class="status status-{{ cohort.t2_status }}">{{ cohort.t2_status }}</span>
+            {% if cohort.t2_target_display %}<span class="muted">{{ cohort.t2_target_display }}</span>{% endif %}
+          </td>
+          <td>
+            {% if cohort.config_fingerprint %}<code title="{{ cohort.config_fingerprint }}">{{ cohort.config_fingerprint[:12] }}</code>{% else %}—{% endif %}
+            {% if cohort.config_drift is sameas true %}<span class="pill warn">drift</span>{% elif cohort.config_drift is sameas false %}<span class="pill ok">frozen</span>{% else %}<span class="pill">drift unknown</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No active research cohorts.</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Completed cohorts</h2>
+  {% if completed_cohorts %}
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr><th>Cohort</th><th>Source / profile</th><th>Members</th><th>Outcomes</th><th>Configuration</th></tr>
+      </thead>
+      <tbody>
+        {% for cohort in completed_cohorts %}
+        {% set outcomes = cohort.outcome_counts or {} %}
+        <tr>
+          <td><a href="/experiments/{{ cohort.id }}"><strong>{{ cohort.name }}</strong></a></td>
+          <td>{{ cohort.source }} / <code>{{ cohort.profile or '—' }}</code></td>
+          <td>{{ cohort.member_count }}</td>
+          <td class="outcome-counts">
+            <span><strong>{{ outcomes.get('BREAKOUT', 0) }}</strong> breakout</span>
+            <span><strong>{{ outcomes.get('STRONG_RISER', 0) }}</strong> strong riser</span>
+            <span><strong>{{ outcomes.get('MODERATE', 0) }}</strong> moderate</span>
+            <span><strong>{{ outcomes.get('STALLED', 0) }}</strong> stalled</span>
+            <span><strong>{{ outcomes.get('RIGHT_CENSORED', 0) }}</strong> censored</span>
+          </td>
+          <td>
+            {% if cohort.config_fingerprint %}<code title="{{ cohort.config_fingerprint }}">{{ cohort.config_fingerprint[:12] }}</code>{% else %}—{% endif %}
+            {% if cohort.config_drift is sameas true %}<span class="pill warn">drift</span>{% elif cohort.config_drift is sameas false %}<span class="pill ok">frozen</span>{% else %}<span class="pill">drift unknown</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No completed research cohorts yet.</div>
+  {% endif %}
+</section>
+{% endblock %}
